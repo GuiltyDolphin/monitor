@@ -19,5 +19,16 @@
 ;;;
 ;;; Code:
 
+(defun hook--configure-post-command ()
+  "Initialize a `post-command-hook' for the current `major-mode'."
+  (let* ((mm-post-command-name (intern (concat (symbol-name major-mode) "-post-command-hook")))
+         (mm-post-command-hook (when (boundp mm-post-command-name) (symbol-value mm-post-command-name)))
+         (runner1 `(lambda () (run-hooks ',mm-post-command-name)))
+         (runner2 `(lambda () (remove-hook 'post-command-hook ,runner1 t))))
+    (add-hook 'post-command-hook runner1 nil t)
+    (add-hook 'change-major-mode-hook runner2 nil t)))
+
+(add-hook 'after-change-major-mode-hook #'hook--configure-post-command)
+
 (provide 'hook)
 ;;; hook.el ends here
