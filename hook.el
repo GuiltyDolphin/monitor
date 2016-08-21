@@ -20,6 +20,7 @@
 ;;; Code:
 
 (require 'hook-core)
+(require 'hook-change)
 
 (provide 'hook)
 ;;; hook.el ends here
