@@ -1,4 +1,4 @@
-;;; hook.el --- Utilities for generating hooks.
+;;; hook-core.el --- Utilities for generating hooks.
 ;;;
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -70,5 +70,5 @@ If PRED evaluates to non-NIL, then run each function in FNS."
 
 (add-hook 'post-command-hook 'hook--check-monitored)
 
-(provide 'hook)
-;;; hook.el ends here
+(provide 'hook-core)
+;;; hook-core.el ends here
