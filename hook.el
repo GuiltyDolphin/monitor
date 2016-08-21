@@ -30,5 +30,45 @@
 
 (add-hook 'after-change-major-mode-hook #'hook--configure-post-command)
 
+(defvar hook--watched-variables-global nil
+  "Alist of variables known to hook.
+Values are the last known values.")
+
+(defun hook--update-watched-variable-global (var val)
+  "Update the known value of VAR to VAL."
+  (setq hook--watched-variables-global (assq-delete-all var hook--watched-variables-global))
+  (push (list var val) hook--watched-variables-global))
+
+(defun hook--add-watched-variable-global (var)
+  "Initialize the known value of VAR to NIL if it is not already known about."
+  (unless (assoc var hook--watched-variables-global)
+    (hook--update-watched-variable-global var nil)))
+
+(defun hook--add-hook (hook fn)
+  "Add to HOOK the function FN.
+A wrapper around `add-hook'."
+  (add-hook hook fn))
+
+(defun hook--watch-variable-global (var fn)
+  "Watch VAR for change in any buffer, and run FN on a change."
+  (let ((var-hook (intern (format "hook-global-after-var-changed-%s-hook" var))))
+    (hook--add-watched-variable-global var)
+    (hook--add-hook var-hook fn)))
+
+(defun hook--run-hooks (&rest hooks)
+  "Run each hook in HOOKS."
+  (apply #'run-hooks hooks))
+
+(defun hook--check-watched-variables-global ()
+  "Check watched variables for any change in value."
+  (dolist (var (mapcar 'car hook--watched-variables-global))
+    (let ((old-val (cadr (assoc var hook--watched-variables-global)))
+          (new-val (when (boundp var) (symbol-value var))))
+      (unless (eq old-val new-val)
+        (hook--update-watched-variable-global var new-val)
+        (hook--run-hooks (intern (format "hook-global-after-var-changed-%s-hook" var)))))))
+
+(add-hook 'post-command-hook 'hook--check-watched-variables-global)
+
 (provide 'hook)
 ;;; hook.el ends here
