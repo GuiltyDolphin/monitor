@@ -30,99 +30,54 @@
 
 (add-hook 'after-change-major-mode-hook #'hook--configure-post-command)
 
-(defvar hook--watched-variables-global nil
-  "Alist of variables known to hook.
+(defvar hook--watched-expressions-global nil
+  "Alist of expressions known to hook.
 Values are the last known values.")
 
-(defvar hook--watched-variables-buffer nil
+(defvar hook--watched-expressions-buffer nil
   "Alist of variables known to hook in the current buffer.
 Values are the last known values.")
-(make-variable-buffer-local 'hook--watched-variables-buffer)
+(make-variable-buffer-local 'hook--watched-expressions-buffer)
 
-(defvar hook--watched-variables-buffer-list nil
-  "List of variables monitored for changes in buffer-local values.")
-
-(defvar hook--watched-variables-global-list nil
-  "List of variables monitored for changes in value.")
-
-(defun hook--update-watched-variable (var val &optional local)
+(defun hook--update-watched-expression (var val &optional local)
   "Update the known value of VAR to VAL.
 Update the buffer-local value if LOCAL is non-nil."
-  (let ((hook-var (hook--watched-variables-var local)))
+  (let ((hook-var (hook--watched-expressions-var local)))
     (eval `(setq ,hook-var (assq-delete-all var ,hook-var)))
     (eval `(push (cons var val) ,hook-var))))
 
-(defun hook--watched-variables-var (&optional local)
+(defun hook--watched-expressions-var (&optional local)
   "Return the correct watch variables based on whether LOCAL is non-nil."
-  (intern (format "hook--watched-variables-%s" (if local 'buffer 'global))))
+  (intern (format "hook--watched-expressions-%s" (if local 'buffer 'global))))
 
-(defun hook--watched-variables-var-list (&optional local)
-  "Return the correct watch variables list based on whether LOCAL is non-nil."
-  (intern (format "hook--watched-variables-%s-list" (if local 'buffer 'global))))
-
-(defun hook--add-watched-variable (var &optional local)
-  "Initialize the known value of VAR to NIL if it is not already known about.
-Initialize the buffer-local value if LOCAL is non-nil."
-  (let ((var-list (hook--watched-variables-var-list local)))
-    (unless (eval `(memq var ,var-list))
-      (eval `(push var ,var-list)))))
-
-(defun hook--add-hook (hook fn &optional local)
-  "Add to HOOK the function FN.
-If LOCAL is non-nil, modify the hook's buffer-local value.
-A wrapper around `add-hook'."
-  (add-hook hook fn nil local))
-
-(defun hook--run-hooks (&rest hooks)
-  "Run each hook in HOOKS."
-  (apply #'run-hooks hooks))
-
-(defun hook--watched-variables-last-value (var &optional local)
+(defun hook--watched-expressions-last-value (var &optional local)
   "Return the last known value of VAR.
 Return the buffer-local version if LOCAL is non-nil."
-  (eval `(cdr (assoc var ,(hook--watched-variables-var local)))))
+  (eval `(cdr (assoc var ,(hook--watched-expressions-var local)))))
 
-(defun hook--list-watched-variables (&optional local)
-  "List the variables watched by hook.
-If LOCAL is non-nil then return the buffer-local variables."
-  (symbol-value (hook--watched-variables-var-list local)))
+(defvar hook--monitored nil
+  "Monitored expressions.")
 
-(defun hook--check-watched-variables (&optional local)
-  "Check watched variables for any change in value.
-If LOCAL is non-nil then check the buffer-local values, otherwise check the global values."
-    (dolist (var (hook--list-watched-variables local))
-      (let ((change-hook (intern (format "hook-%s-after-var-changed-%s-hook" (if local 'local 'global) var))))
-        (let ((old-val (hook--watched-variables-last-value var local))
-              (new-val (when (boundp var) (if local (buffer-local-value var (current-buffer)) (symbol-value var)))))
-        (unless (eq old-val new-val)
-          (hook--update-watched-variable var new-val local)
-          (hook--run-hooks change-hook))))))
+(defun hook--monitor (pred &rest fns)
+  "After `post-command-hook' check PRED for a non-NIL value.
+If PRED evaluates to non-NIL, then run each function in FNS."
+  (let (exist-fns (cdr (assoc pred hook--monitored)))
+    (dolist (fn fns) (unless (member fn exist-fns) (push fn exist-fns)))
+    (setq hook--monitored (--reject (equal (car it) pred) hook--monitored))
+    (push (cons pred exist-fns) hook--monitored))
+  nil)
 
-(defun hook--check-watched-variables-buffer ()
-  "Check watched variables for any change in value in the current buffer."
-  (hook--check-watched-variables t))
+(defun hook--check-monitored ()
+  "Check each monitored expression."
+  (let ((to-delete))
+    (dolist (pexp hook--monitored)
+      (when (condition-case var (eval (car pexp))
+              (error (progn (message "error when evaluating %s (got %s)" (car pexp) (error-message-string var))
+                            (push pexp to-delete) nil)))
+        (dolist (f (cdr pexp)) (funcall f))))
+    (when to-delete (setq hook--monitored (--reject (member it to-delete) hook--monitored)))))
 
-(defun hook--check-watched-variables-global ()
-  "Check watched variables for any change in value."
-  (hook--check-watched-variables))
-
-(defun hook--watch-variable (var fn &optional local)
-  "Watch VAR for change in value, and run FN on a change.
-Watch the buffer-local value if LOCAL is non-nil."
-  (let ((var-hook (intern (format "hook-%s-after-var-changed-%s-hook" (if local 'local 'global) var))))
-    (hook--add-watched-variable var local)
-    (hook--add-hook var-hook fn)))
-
-(defun hook--watch-variable-global (var fn)
-  "Watch VAR for change in any buffer, and run FN on a change."
-  (hook--watch-variable var fn))
-
-(defun hook--watch-variable-buffer (var fn)
-  "Watch VAR for change in any buffer, and run FN on a change."
-  (hook--watch-variable var fn t))
-
-(add-hook 'post-command-hook 'hook--check-watched-variables-global)
-(add-hook 'post-command-hook 'hook--check-watched-variables-buffer)
+(add-hook 'post-command-hook 'hook--check-monitored)
 
 (provide 'hook)
 ;;; hook.el ends here
