@@ -21,7 +21,7 @@
 
 (defun hook--configure-post-command ()
   "Initialize a `post-command-hook' for the current `major-mode'."
-  (let* ((mm-post-command-name (intern (concat (symbol-name major-mode) "-post-command-hook")))
+  (let* ((mm-post-command-name (intern (format "hook-%s-post-command-hook" major-mode)))
          (mm-post-command-hook (when (boundp mm-post-command-name) (symbol-value mm-post-command-name)))
          (runner1 `(lambda () (run-hooks ',mm-post-command-name)))
          (runner2 `(lambda () (remove-hook 'post-command-hook ,runner1 t))))
