@@ -19,6 +19,8 @@
 ;;;
 ;;; Code:
 
+(require 'dash)
+
 (defvar hook--watched-expressions-global nil
   "Alist of expressions known to hook.
 Values are the last known values.")
