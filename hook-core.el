@@ -27,7 +27,7 @@
 (defun hook--monitor (pred &rest fns)
   "After `post-command-hook' check PRED for a non-NIL value.
 If PRED evaluates to non-NIL, then run each function in FNS."
-  (let (exist-fns (cdr (assoc pred hook--monitored)))
+  (let ((exist-fns (cdr (assoc pred hook--monitored))))
     (dolist (fn fns) (unless (member fn exist-fns) (push fn exist-fns)))
     (hook--monitored-update-functions pred exist-fns)))
 
