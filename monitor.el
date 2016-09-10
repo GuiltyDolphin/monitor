@@ -31,6 +31,11 @@
 
 ;;; CORE
 
+(defgroup monitor nil
+  "Monitor expressions."
+  :group 'lisp
+  :prefix 'monitor-)
+
 (defvar monitor--monitored nil
   "Monitored expressions.")
 
