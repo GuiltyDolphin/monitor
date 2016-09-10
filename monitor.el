@@ -36,6 +36,7 @@
   :group 'lisp
   :prefix 'monitor-)
 
+;;;###autoload
 (define-minor-mode monitor-mode
   "Minor mode for monitoring expressions."
   :group 'monitor
@@ -43,6 +44,7 @@
                   (add-hook 'post-command-hook 'monitor--check-monitored nil t)
                 (remove-hook 'post-command-hook 'monitor--check-monitored t)))
 
+;;;###autoload
 (define-globalized-minor-mode monitor-global-mode monitor-mode monitor-mode
   :group 'monitor)
 
