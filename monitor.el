@@ -1,4 +1,4 @@
-;;; monitor.el --- Utilities for generating monitors.
+;;; monitor.el --- Utilities for monitoring expressions.
 
 ;; Copyright (C) 2016 Ben Moon
 ;; Author: Ben Moon <guiltydolphin@gmail.com>
@@ -23,7 +23,7 @@
 
 ;;; Commentary:
 ;;;
-;;; Provide utilities for generating monitors.
+;;; Provide utilities for monitoring expressions.
 ;;;
 ;;; Code:
 
