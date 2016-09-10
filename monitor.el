@@ -134,5 +134,11 @@ Optional MODE should specify a `major-mode'.
 If LOCAL is non-nil then monitor the buffer-local value."
   (monitor--monitor-in-mode `(monitor--expression-value-changed ',expr ,local) mode fn))
 
+(defmacro monitor-expression-value (expr fn &optional mode local)
+  "Monitor EXPR and run FN if it's value is changed.
+Optional MODE should specify a `major-mode'.
+If LOCAL is non-nil then monitor the buffer-local value."
+  (monitor--monitor-expression-value expr fn mode local))
+
 (provide 'monitor)
 ;;; monitor.el ends here
