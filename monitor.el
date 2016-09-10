@@ -36,6 +36,16 @@
   :group 'lisp
   :prefix 'monitor-)
 
+(define-minor-mode monitor-mode
+  "Minor mode for monitoring expressions."
+  :group 'monitor
+  :after-hook (if monitor-mode
+                  (add-hook 'post-command-hook 'monitor--check-monitored nil t)
+                (remove-hook 'post-command-hook 'monitor--check-monitored t)))
+
+(define-globalized-minor-mode monitor-global-mode monitor-mode monitor-mode
+  :group 'monitor)
+
 (defvar monitor--monitored nil
   "Monitored expressions.")
 
@@ -72,8 +82,6 @@ If FNS is nil then this deletes the entry at PRED."
         (condition-case var (funcall f)
           (error (progn (message "error when executing %s (got %s)" f (error-message-string var))
                         (monitor--monitored-remove-function (car pexp) f))))))))
-
-(add-hook 'post-command-hook 'monitor--check-monitored)
 
 ;;; EXPRESSIONS
 
