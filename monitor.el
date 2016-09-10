@@ -6,7 +6,7 @@
 ;; Git-Repository: git://github.com/guiltydolphin/monitor.git
 ;; Created: 2016-08-17
 ;; Version: 0.1.0
-;; Keywords: monitor utility
+;; Keywords: lisp, monitor, utility
 ;; Package-Requires: ((dash "2.13.0"))
 
 ;; This program is free software: you can redistribute it and/or modify
