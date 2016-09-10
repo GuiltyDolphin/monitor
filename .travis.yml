@@ -26,7 +26,7 @@ install:
     fi
 
 script:
-  - emacs -batch -l ert -L . -L tests/ -l tests/hook-tests.el -f ert-run-tests-batch-and-exit
+  - emacs -batch -l ert -L . -L tests/ -l tests/monitor-tests.el -f ert-run-tests-batch-and-exit
 
 notifications:
   email: false

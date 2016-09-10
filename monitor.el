@@ -1,12 +1,12 @@
-;;; hook.el --- Utilities for generating hooks.
+;;; monitor.el --- Utilities for generating monitors.
 
 ;; Copyright (C) 2016 Ben Moon
 ;; Author: Ben Moon <guiltydolphin@gmail.com>
-;; URL: https://github.com/guiltydolphin/hook
-;; Git-Repository: git://github.com/guiltydolphin/hook.git
+;; URL: https://github.com/guiltydolphin/monitor
+;; Git-Repository: git://github.com/guiltydolphin/monitor.git
 ;; Created: 2016-08-17
 ;; Version: 0.1.0
-;; Keywords: hook utility
+;; Keywords: monitor utility
 ;; Package-Requires: ((dash "2.13.0"))
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -23,12 +23,12 @@
 
 ;;; Commentary:
 ;;;
-;;; Provide utilities for generating hooks.
+;;; Provide utilities for generating monitors.
 ;;;
 ;;; Code:
 
-(require 'hook-core)
-(require 'hook-change)
+(require 'monitor-core)
+(require 'monitor-change)
 
-(provide 'hook)
-;;; hook.el ends here
+(provide 'monitor)
+;;; monitor.el ends here

@@ -1,8 +1,8 @@
-;;; hook-tests.el
+;;; monitor-tests.el
 ;;; Code:
 
 (require 'ert)
-(require 'hook)
+(require 'monitor)
 
-(provide 'hook-tests)
-;;; hook-tests.el ends here
+(provide 'monitor-tests)
+;;; monitor-tests.el ends here

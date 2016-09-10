@@ -1,4 +1,4 @@
-;;; hook-core.el --- Utilities for generating hooks.
+;;; monitor-core.el --- Utilities for generating monitors.
 ;;;
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -15,50 +15,50 @@
 
 ;;; Commentary:
 ;;;
-;;; Provide utilities for generating hooks.
+;;; Provide utilities for generating monitors.
 ;;;
 ;;; Code:
 
 (require 'dash)
 
-(defvar hook--monitored nil
+(defvar monitor--monitored nil
   "Monitored expressions.")
 
-(defun hook--monitor (pred &rest fns)
+(defun monitor--monitor (pred &rest fns)
   "After `post-command-hook' check PRED for a non-NIL value.
 If PRED evaluates to non-NIL, then run each function in FNS."
-  (let ((exist-fns (cdr (assoc pred hook--monitored))))
+  (let ((exist-fns (cdr (assoc pred monitor--monitored))))
     (dolist (fn fns) (unless (member fn exist-fns) (push fn exist-fns)))
-    (hook--monitored-update-functions pred exist-fns)))
+    (monitor--monitored-update-functions pred exist-fns)))
 
-(defun hook--monitored-update-functions (pred fns)
+(defun monitor--monitored-update-functions (pred fns)
   "Update the functions of PRED to FNS.
 If FNS is nil then this deletes the entry at PRED."
-  (setq hook--monitored (--reject (equal (car it) pred) hook--monitored))
-  (when fns (push (cons pred fns) hook--monitored)))
+  (setq monitor--monitored (--reject (equal (car it) pred) monitor--monitored))
+  (when fns (push (cons pred fns) monitor--monitored)))
 
-(defun hook--monitored-remove-function (pred &rest fns )
+(defun monitor--monitored-remove-function (pred &rest fns )
   "Remove from PRED, any functions `equal' to a member of FNS."
-  (let ((exist-fns (cdr (assoc pred hook--monitored))))
+  (let ((exist-fns (cdr (assoc pred monitor--monitored))))
     (setq exist-fns (--reject (member it fns) exist-fns))
-    (hook--monitored-update-functions pred exist-fns)))
+    (monitor--monitored-update-functions pred exist-fns)))
 
-(defun hook--monitored-remove-pred (pred)
+(defun monitor--monitored-remove-pred (pred)
   "Remove PRED from the monitored predicates."
-  (hook--monitored-update-functions pred nil))
+  (monitor--monitored-update-functions pred nil))
 
-(defun hook--check-monitored ()
+(defun monitor--check-monitored ()
   "Check each monitored expression."
-  (dolist (pexp (copy-alist hook--monitored))
+  (dolist (pexp (copy-alist monitor--monitored))
     (when (condition-case var (eval (car pexp))
             (error (progn (message "error when evaluating %s (got %s)" (car pexp) (error-message-string var))
-                          (hook--monitored-remove-pred (car pexp)) nil)))
+                          (monitor--monitored-remove-pred (car pexp)) nil)))
       (dolist (f (cdr pexp))
         (condition-case var (funcall f)
           (error (progn (message "error when executing %s (got %s)" f (error-message-string var))
-                        (hook--monitored-remove-function (car pexp) f))))))))
+                        (monitor--monitored-remove-function (car pexp) f))))))))
 
-(add-hook 'post-command-hook 'hook--check-monitored)
+(add-hook 'post-command-hook 'monitor--check-monitored)
 
-(provide 'hook-core)
-;;; hook-core.el ends here
+(provide 'monitor-core)
+;;; monitor-core.el ends here
