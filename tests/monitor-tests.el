@@ -10,7 +10,7 @@
 
 (defmacro monitor--test-build-get-put-tests (getter putter)
   "Build standard tests for a getter GETTER and putter PUTTER."
-  (let* ((monitor-symbol (intern "monitor-symbol"))
+  (let* ((monitor-symbol (make-symbol "monitor-symbol"))
          (get-form `(funcall ,getter ,monitor-symbol :test-slot-a))
          (set-form (lambda (to) `(funcall ,putter ,monitor-symbol :test-slot-a ,to))))
     `(let ((,monitor-symbol (make-symbol "monitor--test-build-get-put-tests-tvar")))
