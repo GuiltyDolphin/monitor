@@ -172,5 +172,22 @@ ARGS is a list of arguments used to define the monitor."
   "Return non-NIL if MONITOR is a monitor."
   (and (symbolp monitor) (get monitor monitor--plist-attribute)))
 
+(defun monitor--plist (monitor)
+  "Get MONITOR's associated plist."
+  (unless (monitorp monitor) (signal 'wrong-type-argument `(monitorp ,monitor)))
+  (get monitor monitor--plist-attribute))
+
+(defun monitor--meta-props (monitor)
+  "Return the meta properties of MONITOR."
+  (plist-get (monitor--plist monitor) :meta))
+
+(defun monitor--meta-get (monitor prop)
+  "From MONITOR get the value of the meta property PROP."
+  (plist-get (monitor--meta-props monitor) prop))
+
+(defun monitor--meta-put (monitor prop value)
+  "Set MONITOR's meta PROP property to VALUE."
+  (plist-put (monitor--meta-props monitor) prop value))
+
 (provide 'monitor)
 ;;; monitor.el ends here
