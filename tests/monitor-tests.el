@@ -79,5 +79,30 @@
     (should (= 1 counter-disabled))
     (monitor--enable monitor-symbol)))
 
+(ert-deftest monitor-test-monitor-instance-equal ()
+  "Tests for `monitor--instance-equal'."
+  (let ((monitor-symbol (make-symbol "monitor-symbol"))
+        (monitor-symbol-b (make-symbol "monitor-symbol-b")))
+    (monitor--test-build-test-monitor monitor-symbol)
+    (monitor--test-build-test-monitor monitor-symbol-b)
+    (let ((instance-a (monitor--instance-create monitor-symbol :a 6 :b 7))
+          (instance-b (monitor--instance-create monitor-symbol :a 6 :b 7))
+          (instance-c (monitor--instance-create monitor-symbol :b 7 :a 6))
+          (instance-d (monitor--instance-create monitor-symbol :a 5 :b 7))
+          (instance-e (monitor--instance-create monitor-symbol :a 6 :c 7))
+          (instance-f (monitor--instance-create monitor-symbol-b :a 6 :b 7)))
+      ; same instance
+      (should (eq t (monitor--instance-equal instance-a instance-a)))
+      ; same form
+      (should (eq t (monitor--instance-equal instance-a instance-b)))
+      ; same key-values, different order
+      (should (eq t (monitor--instance-equal instance-a instance-c)))
+      ; different value for a key
+      (should-not (eq t (monitor--instance-equal instance-a instance-d)))
+      ; different keys
+      (should-not (eq t (monitor--instance-equal instance-a instance-e)))
+      ; different monitors
+      (should-not (eq t (monitor--instance-equal instance-a instance-f))))))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

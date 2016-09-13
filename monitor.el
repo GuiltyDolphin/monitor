@@ -235,5 +235,27 @@ ARGS is a list of arguments used to define the monitor."
     (funcall (monitor--decl-get monitor :disable) monitor)
     (monitor--meta-put monitor :enabled nil)))
 
+(defun monitor--instance-create (monitor &rest args)
+  "Create a new instance of MONITOR with input arguments ARGS."
+  `(,monitor ,@args))
+
+(defun monitor--instance-args (instance)
+  "Return the arguments used in the creation of INSTANCE."
+  (cdr instance))
+
+(defun monitor--instance-monitor (instance)
+  "Return the monitor used in the creation of INSTANCE."
+  (car instance))
+
+(defun monitor--instance-equal (instance-a instance-b)
+  "T if INSTANCE-A is equal (as a monitor instance) to INSTANCE-B."
+  (let* ((args-a (monitor--instance-args instance-a))
+        (args-b (monitor--instance-args instance-b))
+        (keys-a (-sort 'string-lessp (-filter 'keywordp args-a)))
+        (keys-b (-sort 'string-lessp (-filter 'keywordp args-b))))
+    (and (equal (monitor--instance-monitor instance-a) (monitor--instance-monitor instance-b))
+         (equal keys-a keys-b)
+         (--all-p (equal (plist-get args-a it) (plist-get args-b it)) keys-a))))
+
 (provide 'monitor)
 ;;; monitor.el ends here
