@@ -156,6 +156,9 @@ Optional MODE should specify a `major-mode'.
 If LOCAL is non-nil then monitor the buffer-local value."
   `(monitor--monitor-expression-value ',expr ,fn ,mode ,local))
 
+(defvar monitor--plist-attribute 'monitor-type
+  "Key used to access a monitor definition from a symbol.")
+
 (defun monitor--make-plist ()
   "Return a new 'empty' plist."
   ; there might be a better way to do this, but I haven't figured it out yet...
