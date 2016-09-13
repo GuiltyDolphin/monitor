@@ -56,5 +56,28 @@
   ; all plists should be different
   (should-not (eq (monitor--make-plist) (monitor--make-plist))))
 
+(ert-deftest monitor-test-monitor-enable-disable ()
+  "Tests for `monitor--enable' and `monitor--disable'."
+  (let ((monitor-symbol (make-symbol "monitor-symbol"))
+        (counter-enabled 0)
+        (counter-disabled 0))
+    (monitor--test-build-test-monitor monitor-symbol nil
+                                      :enable (lambda (monitor) (incf counter-enabled))
+                                      :disable (lambda (monitor) (incf counter-disabled)))
+    (should (= 0 counter-enabled))
+    (should (= 0 counter-disabled))
+    (should (eq t (monitor--disabled-p monitor-symbol)))
+    (monitor--enable monitor-symbol)
+    (should (= 1 counter-enabled))
+    (should (eq t (monitor--enabled-p monitor-symbol)))
+    (monitor--enable monitor-symbol)
+    (should (= 1 counter-enabled))
+    (monitor--disable monitor-symbol)
+    (should (= 1 counter-disabled))
+    (should (eq t (monitor--disabled-p monitor-symbol)))
+    (monitor--disable monitor-symbol)
+    (should (= 1 counter-disabled))
+    (monitor--enable monitor-symbol)))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

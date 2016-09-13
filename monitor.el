@@ -215,5 +215,25 @@ ARGS is a list of arguments used to define the monitor."
   "Set MONITOR's decl PROP property to VALUE."
   (plist-put (monitor--decl-props monitor) prop value))
 
+(defun monitor--enabled-p (monitor)
+  "T if MONITOR is enabled."
+  (monitor--meta-get monitor :enabled))
+
+(defun monitor--disabled-p (monitor)
+  "T if MONITOR is disabled."
+  (not (monitor--enabled-p monitor)))
+
+(defun monitor--enable (monitor)
+  "Enable MONITOR."
+  (unless (monitor--enabled-p monitor)
+    (funcall (monitor--decl-get monitor :enable) monitor)
+    (monitor--meta-put monitor :enabled t)))
+
+(defun monitor--disable (monitor)
+  "Disable MONITOR."
+  (unless (monitor--disabled-p monitor)
+    (funcall (monitor--decl-get monitor :disable) monitor)
+    (monitor--meta-put monitor :enabled nil)))
+
 (provide 'monitor)
 ;;; monitor.el ends here
