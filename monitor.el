@@ -156,5 +156,21 @@ Optional MODE should specify a `major-mode'.
 If LOCAL is non-nil then monitor the buffer-local value."
   `(monitor--monitor-expression-value ',expr ,fn ,mode ,local))
 
+(defun monitor--define-monitor (name parent doc &rest args)
+  "Define a new monitor with NAME and parent PARENT.
+DOC is a string describing the monitor.
+
+ARGS is a list of arguments used to define the monitor."
+  (declare (doc-string 3))
+  (put name monitor--plist-attribute `(:decl ,args :meta '(:parent ,parent :doc ,doc))))
+
+(defun monitor--remove-monitor (monitor)
+  "Remove MONITOR's definition as a monitor."
+  (put monitor monitor--plist-attribute nil))
+
+(defun monitor-p (monitor)
+  "Return non-NIL if MONITOR is a monitor."
+  (and (symbolp monitor) (get monitor monitor--plist-attribute)))
+
 (provide 'monitor)
 ;;; monitor.el ends here
