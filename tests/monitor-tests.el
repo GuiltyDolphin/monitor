@@ -138,5 +138,13 @@
       ; not in instance (in monitor), but don't fall back
       (should (eq nil (monitor--instance-get-arg instance :test-arg-b))))))
 
+(ert-deftest monitor-test-instance-existing-p ()
+  "Tests for `monitor--instance-existing-p'."
+  (let ((monitor-symbol (make-symbol "monitor-symbol")))
+    (monitor--test-build-test-monitor monitor-symbol)
+    (should-error (monitor--instance-existing-p nil) :type 'wrong-type-argument)
+    (let ((instance (monitor--instance-create monitor-symbol)))
+      (should (eq t (monitor--instance-existing-p instance))))))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

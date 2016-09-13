@@ -235,6 +235,15 @@ ARGS is a list of arguments used to define the monitor."
     (funcall (monitor--decl-get monitor :disable) monitor)
     (monitor--meta-put monitor :enabled nil)))
 
+(defun monitor--instances (monitor)
+  "Return existing instances of MONITOR."
+  (monitor--meta-get monitor :instances))
+
+(defun monitor--instance-existing-p (instance)
+  "T if INSTANCE is equal to an existing instance."
+  (let ((instances (monitor--instances (monitor--instance-monitor instance))))
+    (let ((-compare-fn 'monitor--instance-equal)) (-contains-p instances instance))))
+
 (defun monitor--instance-create (monitor &rest args)
   "Create a new instance of MONITOR with input arguments ARGS."
   `(,monitor ,@args))
@@ -245,10 +254,12 @@ ARGS is a list of arguments used to define the monitor."
 
 (defun monitor--instance-args (instance)
   "Return the arguments used in the creation of INSTANCE."
+  (unless (monitor--instance-p instance) (signal 'wrong-type-argument `(monitor-instance-p ,instance)))
   (cdr instance))
 
 (defun monitor--instance-monitor (instance)
   "Return the monitor used in the creation of INSTANCE."
+  (unless (monitor--instance-p instance) (signal 'wrong-type-argument `(monitor-instance-p ,instance)))
   (car instance))
 
 (defun monitor--instance-equal (instance-a instance-b)
