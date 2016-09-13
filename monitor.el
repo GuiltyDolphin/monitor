@@ -194,13 +194,22 @@ ARGS is a list of arguments used to define the monitor."
   "Set MONITOR's meta PROP property to VALUE."
   (plist-put (monitor--meta-props monitor) prop value))
 
+(defun monitor--parent (monitor)
+  "Return the name of the parent monitor of MONITOR (or NIL)."
+  (monitor--meta-get monitor :parent))
+
 (defun monitor--decl-props (monitor)
   "Return the decl properties of MONITOR."
   (plist-get (monitor--plist monitor) :decl))
 
 (defun monitor--decl-get (monitor prop)
   "From MONITOR get the value of the decl property PROP."
-  (plist-get (monitor--decl-props monitor) prop))
+  (let ((decls (monitor--decl-props monitor)))
+    (if (plist-member decls prop)
+        (plist-get decls prop)
+      (-when-let (parent (monitor--parent monitor))
+        (message "parent: %s" parent)
+        (monitor--decl-get parent prop)))))
 
 (defun monitor--decl-put (monitor prop value)
   "Set MONITOR's decl PROP property to VALUE."

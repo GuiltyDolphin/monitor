@@ -4,9 +4,9 @@
 (require 'ert)
 (require 'monitor)
 
-(defun monitor--test-build-test-monitor (name)
+(defun monitor--test-build-test-monitor (name &optional parent &rest args)
   "Build a test monitor named NAME."
-  (monitor--define-monitor name 'default "Test monitor."))
+  (apply 'monitor--define-monitor name parent "Test monitor." args))
 
 (defmacro monitor--test-build-get-put-tests (getter putter)
   "Build standard tests for a getter GETTER and putter PUTTER."
@@ -41,7 +41,15 @@
 
 (ert-deftest monitor-test-monitor-decl-get-put ()
   "Tests for `monitor--decl-put' and `monitor--decl-get'."
-  (monitor--test-build-get-put-tests 'monitor--decl-get 'monitor--decl-put))
+  (monitor--test-build-get-put-tests 'monitor--decl-get 'monitor--decl-put)
+  (let ((monitor-parent-symbol (make-symbol "monitor-parent-symbol"))
+        (monitor-child-symbol (make-symbol "monitor-child-symbol")))
+    (monitor--test-build-test-monitor monitor-parent-symbol nil :test-arg-a 'parent-a :test-arg-b 'parent-b)
+    (monitor--test-build-test-monitor monitor-child-symbol monitor-parent-symbol :test-arg-b 'child-b)
+    ; not defined in child, so fall back to parent
+    (should (eq 'parent-a (monitor--decl-get monitor-child-symbol :test-arg-a)))
+    ; defined in both parent and child, so use child
+    (should (eq 'child-b (monitor--decl-get monitor-child-symbol :test-arg-b)))))
 
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here
