@@ -62,8 +62,8 @@
         (counter-enabled 0)
         (counter-disabled 0))
     (monitor--test-build-test-monitor monitor-symbol nil
-                                      :enable (lambda (monitor) (incf counter-enabled))
-                                      :disable (lambda (monitor) (incf counter-disabled)))
+                                      :enable (lambda (monitor) (setq counter-enabled (1+ counter-enabled)))
+                                      :disable (lambda (monitor) (setq counter-disabled (1+ counter-disabled))))
     (should (= 0 counter-enabled))
     (should (= 0 counter-disabled))
     (should (eq t (monitor--disabled-p monitor-symbol)))
