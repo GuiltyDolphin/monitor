@@ -146,5 +146,21 @@
     (let ((instance (monitor--instance-create monitor-symbol)))
       (should (eq t (monitor--instance-existing-p instance))))))
 
+(ert-deftest monitor-test-instance-create ()
+  "Tests for `monitor--instance-create'."
+  (let ((monitor-symbol (make-symbol "monitor-symbol"))
+        instances)
+    (monitor--test-build-test-monitor monitor-symbol nil
+      :create (lambda (instance)
+                (push instance instances)))
+    (should (equal nil instances))
+    (let ((instance (monitor--instance-create monitor-symbol)))
+      (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
+      (monitor--instance-create monitor-symbol)
+      ; already have an exact instance
+      (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
+      (let ((instance-b (monitor--instance-create monitor-symbol :a 1)))
+        (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance instance-b) instances)))))))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

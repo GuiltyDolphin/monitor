@@ -235,6 +235,13 @@ ARGS is a list of arguments used to define the monitor."
     (funcall (monitor--decl-get monitor :disable) monitor)
     (monitor--meta-put monitor :enabled nil)))
 
+(defun monitor--run-option (monitor prop &rest args)
+  "Run MONITOR's PROP option with ARGS as arguments.
+
+Don't do anything if the option is not a function."
+  (let ((f (monitor--decl-get monitor prop)))
+    (when (functionp f) (apply f args))))
+
 (defun monitor--instances (monitor)
   "Return existing instances of MONITOR."
   (monitor--meta-get monitor :instances))
@@ -246,7 +253,12 @@ ARGS is a list of arguments used to define the monitor."
 
 (defun monitor--instance-create (monitor &rest args)
   "Create a new instance of MONITOR with input arguments ARGS."
-  `(,monitor ,@args))
+  (let ((instance `(,monitor ,@args)))
+    (unless (monitor--instance-existing-p instance)
+      (monitor--run-option monitor :create instance)
+      (let ((instances (monitor--instances monitor)))
+        (monitor--meta-put monitor :instances (cons instance instances))))
+      instance))
 
 (defun monitor--instance-p (instance)
   "T if INSTANCE is a monitor instance."
