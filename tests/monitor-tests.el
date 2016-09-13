@@ -39,5 +39,9 @@
   "Tests for `monitor--meta-put' and `monitor--meta-get'."
   (monitor--test-build-get-put-tests 'monitor--meta-get 'monitor--meta-put))
 
+(ert-deftest monitor-test-monitor-decl-get-put ()
+  "Tests for `monitor--decl-put' and `monitor--decl-get'."
+  (monitor--test-build-get-put-tests 'monitor--decl-get 'monitor--decl-put))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here
