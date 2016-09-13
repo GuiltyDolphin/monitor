@@ -162,7 +162,7 @@ DOC is a string describing the monitor.
 
 ARGS is a list of arguments used to define the monitor."
   (declare (doc-string 3))
-  (put name monitor--plist-attribute `(:decl ,args :meta '(:parent ,parent :doc ,doc))))
+  (put name monitor--plist-attribute `(:decl ',args :meta '(:parent ,parent :doc ,doc))))
 
 (defun monitor--remove-monitor (monitor)
   "Remove MONITOR's definition as a monitor."
