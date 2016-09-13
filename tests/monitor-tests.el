@@ -79,6 +79,16 @@
     (should (= 1 counter-disabled))
     (monitor--enable monitor-symbol)))
 
+(ert-deftest monitor-test-monitor-instance-p ()
+  "Tests for `monitor--instance-p'."
+  (let ((monitor-symbol (make-symbol "monitor-symbol")))
+    ; monitors aren't instances of themselves
+    (monitor--test-build-test-monitor monitor-symbol)
+    (should (eq nil (monitor--instance-p monitor-symbol)))
+    (let ((instance-a (monitor--instance-create monitor-symbol)))
+      ; explicit instance
+      (should (eq t (monitor--instance-p instance-a))))))
+
 (ert-deftest monitor-test-monitor-instance-equal ()
   "Tests for `monitor--instance-equal'."
   (let ((monitor-symbol (make-symbol "monitor-symbol"))

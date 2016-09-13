@@ -239,6 +239,10 @@ ARGS is a list of arguments used to define the monitor."
   "Create a new instance of MONITOR with input arguments ARGS."
   `(,monitor ,@args))
 
+(defun monitor--instance-p (instance)
+  "T if INSTANCE is a monitor instance."
+  (when (and (listp instance) (monitorp (car instance))) t))
+
 (defun monitor--instance-args (instance)
   "Return the arguments used in the creation of INSTANCE."
   (cdr instance))
