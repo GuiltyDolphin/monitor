@@ -168,7 +168,7 @@ ARGS is a list of arguments used to define the monitor."
   "Remove MONITOR's definition as a monitor."
   (put monitor monitor--plist-attribute nil))
 
-(defun monitor-p (monitor)
+(defun monitorp (monitor)
   "Return non-NIL if MONITOR is a monitor."
   (and (symbolp monitor) (get monitor monitor--plist-attribute)))
 
