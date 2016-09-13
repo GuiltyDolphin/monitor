@@ -208,7 +208,6 @@ ARGS is a list of arguments used to define the monitor."
     (if (plist-member decls prop)
         (plist-get decls prop)
       (-when-let (parent (monitor--parent monitor))
-        (message "parent: %s" parent)
         (monitor--decl-get parent prop)))))
 
 (defun monitor--decl-put (monitor prop value)
