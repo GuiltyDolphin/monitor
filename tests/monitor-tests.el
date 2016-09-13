@@ -126,5 +126,17 @@
       ; not in instance, fall back to monitor
       (should (eq 'mb (monitor--instance-get instance :test-arg-b))))))
 
+(ert-deftest monitor-test-monitor-instance-get-arg ()
+  "Tests for `monitor--instance-get-arg'."
+  (let ((monitor-symbol (make-symbol "monitor-symbol")))
+    (monitor--test-build-test-monitor monitor-symbol nil :test-arg-a 'ma :test-arg-b 'mb)
+    (let ((instance (monitor--instance-create monitor-symbol :test-arg-a 'ia)))
+      ; not declared in any
+      (should (eq nil (monitor--instance-get-arg instance :test-arg)))
+      ; declared in instance
+      (should (eq 'ia (monitor--instance-get-arg instance :test-arg-a)))
+      ; not in instance (in monitor), but don't fall back
+      (should (eq nil (monitor--instance-get-arg instance :test-arg-b))))))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

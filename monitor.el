@@ -261,6 +261,11 @@ ARGS is a list of arguments used to define the monitor."
          (equal keys-a keys-b)
          (--all-p (equal (plist-get args-a it) (plist-get args-b it)) keys-a))))
 
+(defun monitor--instance-get-arg (instance prop)
+  "Return the value of INSTANCE's PROP property."
+  (let ((args (monitor--instance-args instance)))
+    (plist-get args prop)))
+
 (defun monitor--instance-get (instance prop)
   "Return the value of INSTANCE's PROP property.
 
