@@ -260,6 +260,14 @@ Don't do anything if the option is not a function."
         (monitor--meta-put monitor :instances (cons instance instances))))
       instance))
 
+(defun monitor--instance-destroy (instance)
+  "Destroy INSTANCE."
+  (when (monitor--instance-existing-p instance)
+    (let ((monitor (monitor--instance-monitor instance)))
+      (monitor--run-option monitor :destroy instance)
+      (let ((instances (monitor--instances monitor)))
+        (monitor--meta-put monitor :instances (--reject (monitor--instance-equal it instance) instances))))))
+
 (defun monitor--instance-p (instance)
   "T if INSTANCE is a monitor instance."
   (when (and (listp instance) (monitorp (car instance))) t))

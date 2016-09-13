@@ -144,7 +144,9 @@
     (monitor--test-build-test-monitor monitor-symbol)
     (should-error (monitor--instance-existing-p nil) :type 'wrong-type-argument)
     (let ((instance (monitor--instance-create monitor-symbol)))
-      (should (eq t (monitor--instance-existing-p instance))))))
+      (should (eq t (monitor--instance-existing-p instance)))
+      (monitor--instance-destroy instance)
+      (should (eq nil (monitor--instance-existing-p instance))))))
 
 (ert-deftest monitor-test-instance-create ()
   "Tests for `monitor--instance-create'."
@@ -161,6 +163,21 @@
       (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
       (let ((instance-b (monitor--instance-create monitor-symbol :a 1)))
         (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance instance-b) instances)))))))
+
+(ert-deftest monitor-test-instance-destroy ()
+  "Tests for `monitor--instance-destroy'."
+  (let ((monitor-symbol (make-symbol "monitor-symbol"))
+        instances)
+    (monitor--test-build-test-monitor monitor-symbol nil
+      :create (lambda (instance)
+                (push instance instances))
+      :destroy (lambda (instance)
+                 (setq instances (--reject (monitor--instance-equal it instance) instances))))
+    (should (equal nil instances))
+    (let ((instance (monitor--instance-create monitor-symbol)))
+      (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
+      (monitor--instance-destroy instance)
+      (should (eq nil instances)))))
 
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here
