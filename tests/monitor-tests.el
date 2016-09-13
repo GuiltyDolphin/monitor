@@ -51,5 +51,10 @@
     ; defined in both parent and child, so use child
     (should (eq 'child-b (monitor--decl-get monitor-child-symbol :test-arg-b)))))
 
+(ert-deftest monitor-test-make-plist ()
+  "Tests for `monitor--make-plist'."
+  ; all plists should be different
+  (should-not (eq (monitor--make-plist) (monitor--make-plist))))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

@@ -159,7 +159,7 @@ If LOCAL is non-nil then monitor the buffer-local value."
 (defun monitor--make-plist ()
   "Return a new 'empty' plist."
   ; there might be a better way to do this, but I haven't figured it out yet...
-  '(nil nil))
+  (make-list 2 nil))
 
 (defun monitor--define-monitor (name parent doc &rest args)
   "Define a new monitor with NAME and parent PARENT.
