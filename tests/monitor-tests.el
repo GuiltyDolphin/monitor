@@ -225,5 +225,22 @@
   (monitor--test-with-uninterned-symbols (monitor-symbol-a monitor-symbol-b)
     (should-error (define-monitor monitor-symbol-a monitor-symbol-b "") :type 'wrong-type-argument)))
 
+(ert-deftest monitor-test-monitor-remove ()
+  "Tests for `monitor--remove-monitor'."
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    (let ((count-destroy 0)
+          (count-disable 0))
+      (monitor--test-build-test-monitor monitor-symbol nil
+        :disable (lambda (monitor) (setq count-disable (1+ count-disable)))
+        :destroy (lambda (instance) (setq count-destroy (1+ count-destroy))))
+      (monitor--enable monitor-symbol)
+      (monitor--instance-create monitor-symbol)
+      (monitor--instance-create monitor-symbol :a 7)
+      (monitor--remove-monitor monitor-symbol)
+      ; it should destroy all instances
+      (should (= 2 count-destroy))
+      ; it should be 'disabled'
+      (should (= 1 count-disable)))))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

@@ -189,8 +189,14 @@ ARGS is a list of arguments used to define the monitor."
   (when parent (unless (monitorp parent) (signal 'wrong-type-argument `(monitorp nilp ,parent))))
   (put name monitor--plist-attribute (apply 'monitor--create-monitor-plist parent doc args)))
 
+(defun monitor--destroy-instances (monitor)
+  "Remove all instances of MONITOR."
+  (--each (monitor--instances monitor) (monitor--instance-destroy it)))
+
 (defun monitor--remove-monitor (monitor)
   "Remove MONITOR's definition as a monitor."
+  (monitor--disable monitor)
+  (monitor--destroy-instances monitor)
   (put monitor monitor--plist-attribute nil))
 
 (defun monitorp (monitor)
