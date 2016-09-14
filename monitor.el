@@ -228,13 +228,13 @@ ARGS is a list of arguments used to define the monitor."
 (defun monitor--enable (monitor)
   "Enable MONITOR."
   (unless (monitor--enabled-p monitor)
-    (funcall (monitor--decl-get monitor :enable) monitor)
+    (monitor--run-option monitor :enable monitor)
     (monitor--meta-put monitor :enabled t)))
 
 (defun monitor--disable (monitor)
   "Disable MONITOR."
   (unless (monitor--disabled-p monitor)
-    (funcall (monitor--decl-get monitor :disable) monitor)
+    (monitor--run-option monitor :disable monitor)
     (monitor--meta-put monitor :enabled nil)))
 
 (defun monitor--run-option (monitor prop &rest args)

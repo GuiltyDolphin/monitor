@@ -59,6 +59,7 @@
 (ert-deftest monitor-test-monitor-enable-disable ()
   "Tests for `monitor--enable' and `monitor--disable'."
   (let ((monitor-symbol (make-symbol "monitor-symbol"))
+        (monitor-child (make-symbol "monitor-child"))
         (counter-enabled 0)
         (counter-disabled 0))
     (monitor--test-build-test-monitor monitor-symbol nil
@@ -77,7 +78,13 @@
     (should (eq t (monitor--disabled-p monitor-symbol)))
     (monitor--disable monitor-symbol)
     (should (= 1 counter-disabled))
-    (monitor--enable monitor-symbol)))
+    (monitor--test-build-test-monitor monitor-child monitor-symbol :enable nil)
+    (should (= 1 counter-enabled))
+    (should (= 1 counter-disabled))
+    (monitor--enable monitor-child)
+    (should (= 1 counter-enabled))
+    (monitor--disable monitor-child)
+    (should (= 2 counter-disabled))))
 
 (ert-deftest monitor-test-monitor-instance-p ()
   "Tests for `monitor--instance-p'."
