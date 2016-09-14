@@ -40,7 +40,7 @@
     (should (eq nil (monitorp monitor-symbol)))
     (monitor--test-build-test-monitor monitor-symbol)
     ; now we've created a monitor, it should recognize it as one
-    (should-not (eq nil (monitorp monitor-symbol)))
+    (should (eq t (monitorp monitor-symbol)))
     (monitor--remove-monitor monitor-symbol)
     ; now it is no longer a monitor
     (should (eq nil (monitorp monitor-symbol)))))

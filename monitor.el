@@ -179,7 +179,7 @@ ARGS is a list of arguments used to define the monitor."
 
 (defun monitorp (monitor)
   "Return non-NIL if MONITOR is a monitor."
-  (and (symbolp monitor) (get monitor monitor--plist-attribute)))
+  (when (and (symbolp monitor) (get monitor monitor--plist-attribute)) t))
 
 (defun monitor--plist (monitor)
   "Get MONITOR's associated plist."
