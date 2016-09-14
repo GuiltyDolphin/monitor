@@ -187,7 +187,12 @@ DOC is a string describing the monitor.
 ARGS is a list of arguments used to define the monitor."
   (declare (doc-string 3))
   (when parent (unless (monitorp parent) (signal 'wrong-type-argument `(monitorp nilp ,parent))))
-  (put name monitor--plist-attribute (apply 'monitor--create-monitor-plist parent doc args)))
+  (let ((monitor-plist (apply 'monitor--create-monitor-plist parent doc args)))
+    (if (monitorp name)
+        (unless (monitor--monitor-plist-equal-p monitor-plist (monitor--plist name))
+          (monitor--remove-monitor name)
+          (put name monitor--plist-attribute monitor-plist))
+      (put name monitor--plist-attribute monitor-plist))))
 
 (defun monitor--destroy-instances (monitor)
   "Remove all instances of MONITOR."

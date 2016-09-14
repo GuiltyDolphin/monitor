@@ -222,8 +222,18 @@
 
 (ert-deftest monitor-test-define-monitor-basic ()
   "Basic tests for `define-monitor'."
-  (monitor--test-with-uninterned-symbols (monitor-symbol-a monitor-symbol-b)
-    (should-error (define-monitor monitor-symbol-a monitor-symbol-b "") :type 'wrong-type-argument)))
+  (monitor--test-with-uninterned-symbols (monitor-symbol monitor-symbol-a monitor-symbol-b)
+    (should-error (define-monitor monitor-symbol-a monitor-symbol-b "") :type 'wrong-type-argument)
+    (let ((count-disable 0))
+      (define-monitor monitor-symbol nil "" :disable (lambda (monitor) (setq count-disable (1+ count-disable))))
+      (monitor--enable monitor-symbol)
+      (should (= 0 count-disable))
+      (define-monitor monitor-symbol nil "" :disable (lambda (monitor) (setq count-disable (1+ count-disable))))
+      ; 'same' monitor, so don't overwrite it
+      (should (= 0 count-disable))
+      (define-monitor monitor-symbol nil "" :enable nil :disable (lambda (monitor) (setq count-disable (1+ count-disable))))
+      ; different monitors - so destroy the old one
+      (should (= 1 count-disable)))))
 
 (ert-deftest monitor-test-monitor-remove ()
   "Tests for `monitor--remove-monitor'."
