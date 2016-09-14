@@ -23,17 +23,23 @@
        ,(funcall set-form "test2")
        (should (equal "test2" ,get-form)))))
 
+(defmacro monitor--test-with-uninterned-symbols (symbols &rest body)
+  "Provide an uninterned version of each symbol in SYMBOLS for use in BODY."
+  (declare (indent 1))
+  `(let (,@(--map `(,it (make-symbol (symbol-name ',it))) symbols))
+     ,@body))
+
 (ert-deftest monitor-test-monitorp ()
   "Tests for `monitorp'."
-  (let ((monitor-symbol (make-symbol "monitor-test-monitorp-tvar")))
-  ; initially, we don't expect it to be a monitor.
-  (should (eq nil (monitorp monitor-symbol)))
-  (monitor--test-build-test-monitor monitor-symbol)
-  ; now we've created a monitor, it should recognize it as one
-  (should-not (eq nil (monitorp monitor-symbol)))
-  (monitor--remove-monitor monitor-symbol)
-  ; now it is no longer a monitor
-  (should (eq nil (monitorp monitor-symbol)))))
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    ; initially, we don't expect it to be a monitor.
+    (should (eq nil (monitorp monitor-symbol)))
+    (monitor--test-build-test-monitor monitor-symbol)
+    ; now we've created a monitor, it should recognize it as one
+    (should-not (eq nil (monitorp monitor-symbol)))
+    (monitor--remove-monitor monitor-symbol)
+    ; now it is no longer a monitor
+    (should (eq nil (monitorp monitor-symbol)))))
 
 (ert-deftest monitor-test-monitor-meta-get-put ()
   "Tests for `monitor--meta-put' and `monitor--meta-get'."
@@ -42,8 +48,7 @@
 (ert-deftest monitor-test-monitor-decl-get-put ()
   "Tests for `monitor--decl-put' and `monitor--decl-get'."
   (monitor--test-build-get-put-tests 'monitor--decl-get 'monitor--decl-put)
-  (let ((monitor-parent-symbol (make-symbol "monitor-parent-symbol"))
-        (monitor-child-symbol (make-symbol "monitor-child-symbol")))
+  (monitor--test-with-uninterned-symbols (monitor-parent-symbol monitor-child-symbol)
     (monitor--test-build-test-monitor monitor-parent-symbol nil :test-arg-a 'parent-a :test-arg-b 'parent-b)
     (monitor--test-build-test-monitor monitor-child-symbol monitor-parent-symbol :test-arg-b 'child-b)
     ; not defined in child, so fall back to parent
@@ -58,37 +63,36 @@
 
 (ert-deftest monitor-test-monitor-enable-disable ()
   "Tests for `monitor--enable' and `monitor--disable'."
-  (let ((monitor-symbol (make-symbol "monitor-symbol"))
-        (monitor-child (make-symbol "monitor-child"))
-        (counter-enabled 0)
-        (counter-disabled 0))
-    (monitor--test-build-test-monitor monitor-symbol nil
-                                      :enable (lambda (monitor) (setq counter-enabled (1+ counter-enabled)))
-                                      :disable (lambda (monitor) (setq counter-disabled (1+ counter-disabled))))
-    (should (= 0 counter-enabled))
-    (should (= 0 counter-disabled))
-    (should (eq t (monitor--disabled-p monitor-symbol)))
-    (monitor--enable monitor-symbol)
-    (should (= 1 counter-enabled))
-    (should (eq t (monitor--enabled-p monitor-symbol)))
-    (monitor--enable monitor-symbol)
-    (should (= 1 counter-enabled))
-    (monitor--disable monitor-symbol)
-    (should (= 1 counter-disabled))
-    (should (eq t (monitor--disabled-p monitor-symbol)))
-    (monitor--disable monitor-symbol)
-    (should (= 1 counter-disabled))
-    (monitor--test-build-test-monitor monitor-child monitor-symbol :enable nil)
-    (should (= 1 counter-enabled))
-    (should (= 1 counter-disabled))
-    (monitor--enable monitor-child)
-    (should (= 1 counter-enabled))
-    (monitor--disable monitor-child)
-    (should (= 2 counter-disabled))))
+  (monitor--test-with-uninterned-symbols (monitor-symbol monitor-child)
+    (let ((counter-enabled 0)
+          (counter-disabled 0))
+      (monitor--test-build-test-monitor monitor-symbol nil
+        :enable (lambda (monitor) (setq counter-enabled (1+ counter-enabled)))
+        :disable (lambda (monitor) (setq counter-disabled (1+ counter-disabled))))
+      (should (= 0 counter-enabled))
+      (should (= 0 counter-disabled))
+      (should (eq t (monitor--disabled-p monitor-symbol)))
+      (monitor--enable monitor-symbol)
+      (should (= 1 counter-enabled))
+      (should (eq t (monitor--enabled-p monitor-symbol)))
+      (monitor--enable monitor-symbol)
+      (should (= 1 counter-enabled))
+      (monitor--disable monitor-symbol)
+      (should (= 1 counter-disabled))
+      (should (eq t (monitor--disabled-p monitor-symbol)))
+      (monitor--disable monitor-symbol)
+      (should (= 1 counter-disabled))
+      (monitor--test-build-test-monitor monitor-child monitor-symbol :enable nil)
+      (should (= 1 counter-enabled))
+      (should (= 1 counter-disabled))
+      (monitor--enable monitor-child)
+      (should (= 1 counter-enabled))
+      (monitor--disable monitor-child)
+      (should (= 2 counter-disabled)))))
 
 (ert-deftest monitor-test-monitor-instance-p ()
   "Tests for `monitor--instance-p'."
-  (let ((monitor-symbol (make-symbol "monitor-symbol")))
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
     ; monitors aren't instances of themselves
     (monitor--test-build-test-monitor monitor-symbol)
     (should (eq nil (monitor--instance-p monitor-symbol)))
@@ -98,8 +102,7 @@
 
 (ert-deftest monitor-test-monitor-instance-equal ()
   "Tests for `monitor--instance-equal'."
-  (let ((monitor-symbol (make-symbol "monitor-symbol"))
-        (monitor-symbol-b (make-symbol "monitor-symbol-b")))
+  (monitor--test-with-uninterned-symbols (monitor-symbol monitor-symbol-b)
     (monitor--test-build-test-monitor monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol-b)
     (let ((instance-a (monitor--instance-create monitor-symbol :a 6 :b 7))
@@ -123,7 +126,7 @@
 
 (ert-deftest monitor-test-monitor-instance-get ()
   "Tests for `monitor--instance-get'."
-  (let ((monitor-symbol (make-symbol "monitor-symbol")))
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol nil :test-arg-a 'ma :test-arg-b 'mb)
     (let ((instance (monitor--instance-create monitor-symbol :test-arg-a 'ia)))
       ; not declared in any
@@ -135,7 +138,7 @@
 
 (ert-deftest monitor-test-monitor-instance-get-arg ()
   "Tests for `monitor--instance-get-arg'."
-  (let ((monitor-symbol (make-symbol "monitor-symbol")))
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol nil :test-arg-a 'ma :test-arg-b 'mb)
     (let ((instance (monitor--instance-create monitor-symbol :test-arg-a 'ia)))
       ; not declared in any
@@ -147,7 +150,7 @@
 
 (ert-deftest monitor-test-instance-existing-p ()
   "Tests for `monitor--instance-existing-p'."
-  (let ((monitor-symbol (make-symbol "monitor-symbol")))
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol)
     (should-error (monitor--instance-existing-p nil) :type 'wrong-type-argument)
     (let ((instance (monitor--instance-create monitor-symbol)))
@@ -157,34 +160,34 @@
 
 (ert-deftest monitor-test-instance-create ()
   "Tests for `monitor--instance-create'."
-  (let ((monitor-symbol (make-symbol "monitor-symbol"))
-        instances)
-    (monitor--test-build-test-monitor monitor-symbol nil
-      :create (lambda (instance)
-                (push instance instances)))
-    (should (equal nil instances))
-    (let ((instance (monitor--instance-create monitor-symbol)))
-      (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
-      (monitor--instance-create monitor-symbol)
-      ; already have an exact instance
-      (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
-      (let ((instance-b (monitor--instance-create monitor-symbol :a 1)))
-        (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance instance-b) instances)))))))
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    (let (instances)
+      (monitor--test-build-test-monitor monitor-symbol nil
+        :create (lambda (instance)
+                  (push instance instances)))
+      (should (equal nil instances))
+      (let ((instance (monitor--instance-create monitor-symbol)))
+        (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
+        (monitor--instance-create monitor-symbol)
+        ; already have an exact instance
+        (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
+        (let ((instance-b (monitor--instance-create monitor-symbol :a 1)))
+          (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance instance-b) instances))))))))
 
 (ert-deftest monitor-test-instance-destroy ()
   "Tests for `monitor--instance-destroy'."
-  (let ((monitor-symbol (make-symbol "monitor-symbol"))
-        instances)
-    (monitor--test-build-test-monitor monitor-symbol nil
-      :create (lambda (instance)
-                (push instance instances))
-      :destroy (lambda (instance)
-                 (setq instances (--reject (monitor--instance-equal it instance) instances))))
-    (should (equal nil instances))
-    (let ((instance (monitor--instance-create monitor-symbol)))
-      (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
-      (monitor--instance-destroy instance)
-      (should (eq nil instances)))))
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    (let (instances)
+      (monitor--test-build-test-monitor monitor-symbol nil
+        :create (lambda (instance)
+                  (push instance instances))
+        :destroy (lambda (instance)
+                   (setq instances (--reject (monitor--instance-equal it instance) instances))))
+      (should (equal nil instances))
+      (let ((instance (monitor--instance-create monitor-symbol)))
+        (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
+        (monitor--instance-destroy instance)
+        (should (eq nil instances))))))
 
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here
