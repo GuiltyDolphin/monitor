@@ -284,7 +284,10 @@ Don't do anything if the option is not a function."
 (defun monitor-instance-create (monitor &rest args)
   "Define a new monitor instance.
 MONITOR is the monitor to watch.
-ARGS is a list of (usually key-value) arguments that define the instance."
+ARGS is a list of (usually key-value) arguments that define the instance.
+
+The keys that have an effect in ARGS varies between monitors, see the
+documentation for MONITOR (and its parents) for which keys are applicable."
   (declare (indent 1))
   (let ((instance `(,monitor ,@args)))
     (unless (monitor--instance-existing-p instance)
