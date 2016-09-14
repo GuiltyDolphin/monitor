@@ -339,6 +339,13 @@ If INSTANCE does not provide PROP, use the associated monitor's."
     (if (plist-member args prop) (plist-get args prop)
       (monitor--decl-get (monitor--instance-monitor instance) prop))))
 
+(defun monitor--instance-run (instance prop &rest args)
+  "Run INSTANCE's PROP function with ARGS as arguments.
+
+Will not error if PROP does not represent a valid function."
+  (let ((f (monitor--instance-get-arg instance prop)))
+    (when (functionp f) (apply f args))))
+
 (defun define-monitor (name parent doc &rest args)
   "Define a new monitor called NAME with parent PARENT.
 NAME should be a non-nil symbol.
