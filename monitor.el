@@ -293,6 +293,8 @@ ARGS is a list of (usually key-value) arguments that define the instance."
         (monitor--meta-put monitor :instances (cons instance instances))))
       instance))
 
+(defalias 'monitor 'monitor-instance-create)
+
 (defun monitor--instance-destroy (instance)
   "Destroy INSTANCE."
   (when (monitor--instance-existing-p instance)
