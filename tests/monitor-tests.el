@@ -29,6 +29,10 @@
   `(let (,@(--map `(,it (make-symbol (symbol-name ',it))) symbols))
      ,@body))
 
+(defun monitor--test-same-instances-p (lista listb)
+  "T if LISTA has the same monitor instances as LISTB."
+  (let ((-compare-fn 'monitor--instance-equal)) (-same-items-p lista listb)))
+
 (ert-deftest monitor-test-monitorp ()
   "Tests for `monitorp'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
@@ -167,12 +171,12 @@
                   (push instance instances)))
       (should (equal nil instances))
       (let ((instance (monitor--instance-create monitor-symbol)))
-        (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
+        (should (monitor--test-same-instances-p (list instance) instances))
         (monitor--instance-create monitor-symbol)
         ; already have an exact instance
-        (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
+        (should (monitor--test-same-instances-p (list instance) instances))
         (let ((instance-b (monitor--instance-create monitor-symbol :a 1)))
-          (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance instance-b) instances))))))))
+          (should (monitor--test-same-instances-p (list instance instance-b) instances)))))))
 
 (ert-deftest monitor-test-instance-destroy ()
   "Tests for `monitor--instance-destroy'."
@@ -185,7 +189,7 @@
                    (setq instances (--reject (monitor--instance-equal it instance) instances))))
       (should (equal nil instances))
       (let ((instance (monitor--instance-create monitor-symbol)))
-        (let ((-compare-fn 'monitor--instance-equal)) (should (-same-items-p (list instance) instances)))
+        (should (monitor--test-same-instances-p (list instance) instances))
         (monitor--instance-destroy instance)
         (should (eq nil instances))))))
 
