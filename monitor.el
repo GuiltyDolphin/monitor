@@ -281,8 +281,11 @@ Don't do anything if the option is not a function."
   (let ((instances (monitor--instances (monitor--instance-monitor instance))))
     (let ((-compare-fn 'monitor--instance-equal)) (-contains-p instances instance))))
 
-(defun monitor--instance-create (monitor &rest args)
-  "Create a new instance of MONITOR with input arguments ARGS."
+(defun monitor-instance-create (monitor &rest args)
+  "Define a new monitor instance.
+MONITOR is the monitor to watch.
+ARGS is a list of (usually key-value) arguments that define the instance."
+  (declare (indent 1))
   (let ((instance `(,monitor ,@args)))
     (unless (monitor--instance-existing-p instance)
       (monitor--run-option monitor :create instance)

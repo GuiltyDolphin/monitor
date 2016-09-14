@@ -100,7 +100,7 @@
     ; monitors aren't instances of themselves
     (monitor--test-build-test-monitor monitor-symbol)
     (should (eq nil (monitor--instance-p monitor-symbol)))
-    (let ((instance-a (monitor--instance-create monitor-symbol)))
+    (let ((instance-a (monitor-instance-create monitor-symbol)))
       ; explicit instance
       (should (eq t (monitor--instance-p instance-a))))))
 
@@ -109,12 +109,12 @@
   (monitor--test-with-uninterned-symbols (monitor-symbol monitor-symbol-b)
     (monitor--test-build-test-monitor monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol-b)
-    (let ((instance-a (monitor--instance-create monitor-symbol :a 6 :b 7))
-          (instance-b (monitor--instance-create monitor-symbol :a 6 :b 7))
-          (instance-c (monitor--instance-create monitor-symbol :b 7 :a 6))
-          (instance-d (monitor--instance-create monitor-symbol :a 5 :b 7))
-          (instance-e (monitor--instance-create monitor-symbol :a 6 :c 7))
-          (instance-f (monitor--instance-create monitor-symbol-b :a 6 :b 7)))
+    (let ((instance-a (monitor-instance-create monitor-symbol :a 6 :b 7))
+          (instance-b (monitor-instance-create monitor-symbol :a 6 :b 7))
+          (instance-c (monitor-instance-create monitor-symbol :b 7 :a 6))
+          (instance-d (monitor-instance-create monitor-symbol :a 5 :b 7))
+          (instance-e (monitor-instance-create monitor-symbol :a 6 :c 7))
+          (instance-f (monitor-instance-create monitor-symbol-b :a 6 :b 7)))
       ; same instance
       (should (eq t (monitor--instance-equal instance-a instance-a)))
       ; same form
@@ -159,7 +159,7 @@
   "Tests for `monitor--instance-get'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol nil :test-arg-a 'ma :test-arg-b 'mb)
-    (let ((instance (monitor--instance-create monitor-symbol :test-arg-a 'ia)))
+    (let ((instance (monitor-instance-create monitor-symbol :test-arg-a 'ia)))
       ; not declared in any
       (should (eq nil (monitor--instance-get instance :test-arg)))
       ; declared in instance
@@ -171,7 +171,7 @@
   "Tests for `monitor--instance-get-arg'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol nil :test-arg-a 'ma :test-arg-b 'mb)
-    (let ((instance (monitor--instance-create monitor-symbol :test-arg-a 'ia)))
+    (let ((instance (monitor-instance-create monitor-symbol :test-arg-a 'ia)))
       ; not declared in any
       (should (eq nil (monitor--instance-get-arg instance :test-arg)))
       ; declared in instance
@@ -184,25 +184,25 @@
   (monitor--test-with-uninterned-symbols (monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol)
     (should-error (monitor--instance-existing-p nil) :type 'wrong-type-argument)
-    (let ((instance (monitor--instance-create monitor-symbol)))
+    (let ((instance (monitor-instance-create monitor-symbol)))
       (should (eq t (monitor--instance-existing-p instance)))
       (monitor--instance-destroy instance)
       (should (eq nil (monitor--instance-existing-p instance))))))
 
 (ert-deftest monitor-test-instance-create ()
-  "Tests for `monitor--instance-create'."
+  "Tests for `monitor-instance-create'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
     (let (instances)
       (monitor--test-build-test-monitor monitor-symbol nil
         :create (lambda (instance)
                   (push instance instances)))
       (should (equal nil instances))
-      (let ((instance (monitor--instance-create monitor-symbol)))
+      (let ((instance (monitor-instance-create monitor-symbol)))
         (should (monitor--test-same-instances-p (list instance) instances))
-        (monitor--instance-create monitor-symbol)
+        (monitor-instance-create monitor-symbol)
         ; already have an exact instance
         (should (monitor--test-same-instances-p (list instance) instances))
-        (let ((instance-b (monitor--instance-create monitor-symbol :a 1)))
+        (let ((instance-b (monitor-instance-create monitor-symbol :a 1)))
           (should (monitor--test-same-instances-p (list instance instance-b) instances)))))))
 
 (ert-deftest monitor-test-instance-destroy ()
@@ -215,7 +215,7 @@
         :destroy (lambda (instance)
                    (setq instances (--reject (monitor--instance-equal it instance) instances))))
       (should (equal nil instances))
-      (let ((instance (monitor--instance-create monitor-symbol)))
+      (let ((instance (monitor-instance-create monitor-symbol)))
         (should (monitor--test-same-instances-p (list instance) instances))
         (monitor--instance-destroy instance)
         (should (eq nil instances))))))
@@ -244,8 +244,8 @@
         :disable (lambda (monitor) (setq count-disable (1+ count-disable)))
         :destroy (lambda (instance) (setq count-destroy (1+ count-destroy))))
       (monitor--enable monitor-symbol)
-      (monitor--instance-create monitor-symbol)
-      (monitor--instance-create monitor-symbol :a 7)
+      (monitor-instance-create monitor-symbol)
+      (monitor-instance-create monitor-symbol :a 7)
       (monitor--remove-monitor monitor-symbol)
       ; it should destroy all instances
       (should (= 2 count-destroy))
@@ -256,9 +256,9 @@
   "Tests for `monitor--instance-run'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol nil :test-fn-b (lambda () "bar"))
-    (let ((instance-a (monitor--instance-create monitor-symbol :test-fn nil))
-          (instance-b (monitor--instance-create monitor-symbol :test-fn '1+))
-          (instance-c (monitor--instance-create monitor-symbol :test-fn (lambda () "foo"))))
+    (let ((instance-a (monitor-instance-create monitor-symbol :test-fn nil))
+          (instance-b (monitor-instance-create monitor-symbol :test-fn '1+))
+          (instance-c (monitor-instance-create monitor-symbol :test-fn (lambda () "foo"))))
       ; shouldn't error with no function
       (monitor--instance-run instance-a :test-fn)
       ; function with arguments
