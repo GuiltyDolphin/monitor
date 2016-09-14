@@ -193,5 +193,10 @@
         (monitor--instance-destroy instance)
         (should (eq nil instances))))))
 
+(ert-deftest monitor-test-define-monitor-basic ()
+  "Basic tests for `define-monitor'."
+  (monitor--test-with-uninterned-symbols (monitor-symbol-a monitor-symbol-b)
+    (should-error (define-monitor monitor-symbol-a monitor-symbol-b "") :type 'wrong-type-argument)))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

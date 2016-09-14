@@ -170,6 +170,7 @@ DOC is a string describing the monitor.
 
 ARGS is a list of arguments used to define the monitor."
   (declare (doc-string 3))
+  (when parent (unless (monitorp parent) (signal 'wrong-type-argument `(monitorp nilp ,parent))))
   (put name monitor--plist-attribute `(:decl ,(or args (monitor--make-plist)) :meta (:parent ,parent :doc ,doc))))
 
 (defun monitor--remove-monitor (monitor)
@@ -306,6 +307,16 @@ If INSTANCE does not provide PROP, use the associated monitor's."
   (let ((args (monitor--instance-args instance)))
     (if (plist-member args prop) (plist-get args prop)
       (monitor--decl-get (monitor--instance-monitor instance) prop))))
+
+(defun define-monitor (name parent doc &rest args)
+  "Define a new monitor called NAME with parent PARENT.
+NAME should be a non-nil symbol.
+DOC is a string that will be used as the monitor's documentation.
+PARENT should be either the name of an existing monitor (as a symbol), or NIL.
+
+ARGS is a list of key-value pairs that define the monitor's behavior."
+  (declare (doc-string 3))
+  (apply 'monitor--define-monitor name parent doc args))
 
 (provide 'monitor)
 ;;; monitor.el ends here
