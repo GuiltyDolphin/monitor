@@ -128,6 +128,33 @@
       ; different monitors
       (should-not (eq t (monitor--instance-equal instance-a instance-f))))))
 
+(ert-deftest monitor-test-monitor-plist-equal-p ()
+  "Tests for `monitor--monitor-plist-equal-p'."
+  (monitor--test-with-uninterned-symbols (monitor-parent)
+    (monitor--test-build-test-monitor monitor-parent)
+    (let ((monitor-a (monitor--create-monitor-plist nil "foo" :a 7))
+          (monitor-b (monitor--create-monitor-plist nil "foo" :a 7))
+          (monitor-c (monitor--create-monitor-plist nil "bar" :a 7))
+          (monitor-d (monitor--create-monitor-plist nil "foo" :a 8))
+          (monitor-e (monitor--create-monitor-plist monitor-parent "foo" :a 7))
+          (monitor-f (monitor--create-monitor-plist nil "foo" :a 7 :b 8))
+          (monitor-g (monitor--create-monitor-plist nil "foo" :b 8 :a 7))
+          (monitor-h (monitor--create-monitor-plist nil "foo" :b 7)))
+    ; same monitor
+    (should (eq t (monitor--monitor-plist-equal-p monitor-a monitor-a)))
+    ; same form
+    (should (eq t (monitor--monitor-plist-equal-p monitor-a monitor-b)))
+    ; different parents
+    (should (eq nil (monitor--monitor-plist-equal-p monitor-a monitor-e)))
+    ; same key-values, different order
+    (should (eq t (monitor--monitor-plist-equal-p monitor-f monitor-g)))
+    ; different value for a key
+    (should-not (eq t (monitor--monitor-plist-equal-p monitor-a monitor-d)))
+    ; different keys
+    (should-not (eq t (monitor--monitor-plist-equal-p monitor-a monitor-h)))
+    ; different docs
+    (should (eq nil (monitor--monitor-plist-equal-p monitor-a monitor-c))))))
+
 (ert-deftest monitor-test-monitor-instance-get ()
   "Tests for `monitor--instance-get'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)

@@ -164,6 +164,22 @@ If LOCAL is non-nil then monitor the buffer-local value."
   ; there might be a better way to do this, but I haven't figured it out yet...
   (make-list 2 nil))
 
+(defun monitor--create-monitor-plist (parent doc &rest args)
+  "Return a plist representing an 'empty' monitor.
+See `define-monitor' for the meaning of PARENT, DOC, and ARGS."
+  `(:decl ,(or args (monitor--make-plist)) :meta (:parent ,parent :doc ,doc)))
+
+(defun monitor--monitor-plist-equal-p (plist-a plist-b)
+  "T if PLIST-A and PLIST-B are equal as monitor definitions.
+
+This ignores meta attributes that may vary - such as :instances."
+  (let ((meta-a (plist-get plist-a :meta))
+        (meta-b (plist-get plist-b :meta)))
+    (and (equal (plist-get meta-a :doc) (plist-get meta-b :doc))
+         (equal (plist-get meta-a :parent) (plist-get meta-b :parent))
+         (monitor--plist-equal-p (plist-get plist-a :decl) (plist-get plist-b :decl))
+         t)))
+
 (defun monitor--define-monitor (name parent doc &rest args)
   "Define a new monitor with NAME and parent PARENT.
 DOC is a string describing the monitor.
@@ -171,7 +187,7 @@ DOC is a string describing the monitor.
 ARGS is a list of arguments used to define the monitor."
   (declare (doc-string 3))
   (when parent (unless (monitorp parent) (signal 'wrong-type-argument `(monitorp nilp ,parent))))
-  (put name monitor--plist-attribute `(:decl ,(or args (monitor--make-plist)) :meta (:parent ,parent :doc ,doc))))
+  (put name monitor--plist-attribute (apply 'monitor--create-monitor-plist parent doc args)))
 
 (defun monitor--remove-monitor (monitor)
   "Remove MONITOR's definition as a monitor."
@@ -285,15 +301,19 @@ Don't do anything if the option is not a function."
   (unless (monitor--instance-p instance) (signal 'wrong-type-argument `(monitor-instance-p ,instance)))
   (car instance))
 
+(defun monitor--plist-equal-p (plist-a plist-b)
+  "T if PLIST-A and PLIST-B have equal key-values."
+  (let ((keys-a (-sort 'string-lessp (-filter 'keywordp plist-a)))
+        (keys-b (-sort 'string-lessp (-filter 'keywordp plist-b))))
+    (and (equal keys-a keys-b)
+         (--all-p (equal (plist-get plist-a it) (plist-get plist-b it)) keys-a))))
+
 (defun monitor--instance-equal (instance-a instance-b)
   "T if INSTANCE-A is equal (as a monitor instance) to INSTANCE-B."
   (let* ((args-a (monitor--instance-args instance-a))
-        (args-b (monitor--instance-args instance-b))
-        (keys-a (-sort 'string-lessp (-filter 'keywordp args-a)))
-        (keys-b (-sort 'string-lessp (-filter 'keywordp args-b))))
+         (args-b (monitor--instance-args instance-b)))
     (and (equal (monitor--instance-monitor instance-a) (monitor--instance-monitor instance-b))
-         (equal keys-a keys-b)
-         (--all-p (equal (plist-get args-a it) (plist-get args-b it)) keys-a))))
+         (monitor--plist-equal-p args-a args-b))))
 
 (defun monitor--instance-get-arg (instance prop)
   "Return the value of INSTANCE's PROP property."
