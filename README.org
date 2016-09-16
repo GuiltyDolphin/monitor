@@ -15,3 +15,12 @@ one step further by allowing the creation of instances. Instances
 (in short) are a way of providing specific configurations for
 a monitor with ease, for example: providing the hook to be monitored;
 the functions to be run on triggering etc.
+
+* Monitors
+
+** Defining Monitors
+
+To define a new monitor, use the ~define-monitor~ function. This function
+has three mandatory arguments: the monitor name; the parent; and the
+documentation string, and then takes an arbitrary amount of arguments in
+the form of ~:keyword~ ~value~ pairs.
