@@ -6,7 +6,7 @@
 
 (defun monitor--test-build-test-monitor (name &optional parent &rest args)
   "Build a test monitor named NAME."
-  (apply 'monitor--define-monitor name parent "Test monitor." args))
+  (apply 'define-monitor name parent "Test monitor." args))
 
 (defmacro monitor--test-build-get-put-tests (getter putter)
   "Build standard tests for a getter GETTER and putter PUTTER."

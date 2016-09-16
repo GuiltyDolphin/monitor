@@ -180,11 +180,13 @@ This ignores meta attributes that may vary - such as :instances."
          (monitor--plist-equal-p (plist-get plist-a :decl) (plist-get plist-b :decl))
          t)))
 
-(defun monitor--define-monitor (name parent doc &rest args)
-  "Define a new monitor with NAME and parent PARENT.
-DOC is a string describing the monitor.
+(defun monitor-define-monitor (name parent doc &rest args)
+  "Define a new monitor called NAME with parent PARENT.
+NAME should be a non-nil symbol.
+DOC is a string that will be used as the monitor's documentation.
+PARENT should be either the name of an existing monitor (as a symbol), or NIL.
 
-ARGS is a list of arguments used to define the monitor."
+ARGS is a list of key-value pairs that define the monitor's behavior."
   (declare (doc-string 3))
   (when parent (unless (monitorp parent) (signal 'wrong-type-argument `(monitorp nilp ,parent))))
   (let ((monitor-plist (apply 'monitor--create-monitor-plist parent doc args)))
@@ -193,6 +195,8 @@ ARGS is a list of arguments used to define the monitor."
           (monitor--remove-monitor name)
           (put name monitor--plist-attribute monitor-plist))
       (put name monitor--plist-attribute monitor-plist))))
+
+(defalias 'define-monitor 'monitor-define-monitor)
 
 (defun monitor--destroy-instances (monitor)
   "Remove all instances of MONITOR."
@@ -354,15 +358,7 @@ Will not error if PROP does not represent a valid function."
   (let ((f (monitor--instance-get-arg instance prop)))
     (when (functionp f) (apply f args))))
 
-(defun define-monitor (name parent doc &rest args)
-  "Define a new monitor called NAME with parent PARENT.
-NAME should be a non-nil symbol.
-DOC is a string that will be used as the monitor's documentation.
-PARENT should be either the name of an existing monitor (as a symbol), or NIL.
 
-ARGS is a list of key-value pairs that define the monitor's behavior."
-  (declare (doc-string 3))
-  (apply 'monitor--define-monitor name parent doc args))
 
 (provide 'monitor)
 ;;; monitor.el ends here
