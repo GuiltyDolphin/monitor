@@ -269,5 +269,13 @@
       ; different interpretation for instance functions and monitor functions.
       (should (eq nil (monitor--instance-run instance-a :test-fn-b))))))
 
+(ert-deftest monitor-test-base-monitor ()
+  "Tests for the 'base monitor."
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    ;; we should be able to make children
+    (define-monitor monitor-symbol 'base "")
+    ;; we don't need any arguments for an instance
+    (monitor monitor-symbol)))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

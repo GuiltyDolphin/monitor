@@ -363,6 +363,13 @@ Will not error if PROP does not represent a valid function."
   (let ((f (monitor--instance-get-arg instance prop)))
     (when (functionp f) (apply f args))))
 
+;;; Monitors
+
+(define-monitor 'base nil
+  "Base monitor which should be used as the parent for new, sparse monitors."
+  :enable nil
+  :disable nil)
+
 
 
 (provide 'monitor)
