@@ -279,7 +279,7 @@ and values, the meaning and use of which may vary between monitors."
 
 Don't do anything if the option is not a function."
   (let ((f (monitor--decl-get monitor prop)))
-    (when (functionp f) (apply f args))))
+    (apply 'monitor--fn-run f args)))
 
 (defun monitor--instances (monitor)
   "Return existing instances of MONITOR."
@@ -361,7 +361,15 @@ If INSTANCE does not provide PROP, use the associated monitor's."
 
 Will not error if PROP does not represent a valid function."
   (let ((f (monitor--instance-get-arg instance prop)))
-    (when (functionp f) (apply f args))))
+    (apply 'monitor--fn-run f args)))
+
+(defun monitor--fn-run (fn &rest args)
+  "Run FN with ARGS as arguments and return the result.
+
+If FN is a list of functions, then run each element with ARGS as arguments and
+return a list of the results."
+  (if (functionp fn) (apply fn args)
+    (--map (apply it args) fn)))
 
 ;;; Monitors
 

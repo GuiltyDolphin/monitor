@@ -252,19 +252,34 @@
       ; it should be 'disabled'
       (should (= 1 count-disable)))))
 
+(ert-deftest monitor-test-monitor-fn-run ()
+  "Tests for `monitor--fn-run'."
+  (let ((fn-a nil)
+        (fn-b '1+)
+        (fn-c (lambda () "foo"))
+        (fn-d '((lambda () "foo") (lambda () "bar")))
+        (fn-e '(1+ 1-)))
+      ; shouldn't error with no function
+      (monitor--fn-run fn-a)
+      ; function with arguments
+      (should (= 8 (monitor--fn-run fn-b 7)))
+      ; function with no arguments
+      (should (equal "foo" (monitor--fn-run fn-c)))
+      ;; multiple functions with no arguments
+      (should (equal '("foo" "bar") (monitor--fn-run fn-d)))
+      ;; multiple functions with arguments
+      (should (equal '(5 3) (monitor--fn-run fn-e 4)))))
+
 (ert-deftest monitor-test-monitor-instance-run ()
   "Tests for `monitor--instance-run'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
     (monitor--test-build-test-monitor monitor-symbol nil :test-fn-b (lambda () "bar"))
     (let ((instance-a (monitor-instance-create monitor-symbol :test-fn nil))
-          (instance-b (monitor-instance-create monitor-symbol :test-fn '1+))
-          (instance-c (monitor-instance-create monitor-symbol :test-fn (lambda () "foo"))))
+          (instance-b (monitor-instance-create monitor-symbol :test-fn '1+)))
       ; shouldn't error with no function
       (monitor--instance-run instance-a :test-fn)
-      ; function with arguments
+      ; standard function
       (should (= 8 (monitor--instance-run instance-b :test-fn 7)))
-      ; function with no arguments
-      (should (equal "foo" (monitor--instance-run instance-c :test-fn)))
       ; don't fall back to monitor
       ; different interpretation for instance functions and monitor functions.
       (should (eq nil (monitor--instance-run instance-a :test-fn-b))))))
