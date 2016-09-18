@@ -30,7 +30,7 @@ GNU General Public License for more details.
 
 @dircategory Emacs
 @direntry
-* Monitor: (monitor).   Using Monitor.
+* Monitor: (monitor).   Monitor arbitrary aspects of Emacs.
 @end direntry
 
 @finalout
