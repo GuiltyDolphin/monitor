@@ -184,14 +184,14 @@ This ignores meta attributes that may vary - such as :instances."
   "Define a new monitor called NAME with parent PARENT.
 The first argument NAME is the symbol that will be associated with the monitor
 definition.  Each symbol may only have one associated monitor.
-The second argument PARENT is the name of the parent monitor,in almost all cases
-this should be a non-nil symbol, though NIL may be used if it is desirable to
-have no parent.
+The second argument PARENT is the name of the parent monitor, in almost all
+cases this should be a non-nil symbol, though NIL may be used if it is desirable
+to have no parent.
 The third argument DOC is a documentation string that should describe the purpose
 of the monitor, as well as any monitor or instance options it introduces.
 
 Lastly, the remaining arguments ARGS should be in the form of pairs of keywords
-and values,the meaning and use of which may vary between monitors."
+and values, the meaning and use of which may vary between monitors."
   (declare (doc-string 3))
   (when parent (unless (monitorp parent) (signal 'wrong-type-argument `(monitorp nilp ,parent))))
   (let ((monitor-plist (apply 'monitor--create-monitor-plist parent doc args)))
