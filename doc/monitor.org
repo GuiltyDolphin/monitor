@@ -1,0 +1,65 @@
+#+MACRO: version 0.1.0
+#+MACRO: name Monitor
+#+MACRO: repo https://github.com/GuiltyDolphin/monitor
+
+#+OPTIONS: ':t toc:t author:t email:t
+#+TITLE: {{{name}}} {{{version}}}
+#+AUTHOR: Ben Moon
+#+EMAIL: software@guiltydolphin.com
+#+LANGUAGE: en
+
+#+TEXINFO_FILENAME: monitor.info
+#+TEXINFO_HEADER: @syncodeindex pg cp
+
+#+TEXINFO_DIR_CATEGORY: Emacs
+#+TEXINFO_DIR_TITLE: Monitor: (monitor).
+#+TEXINFO_DIR_DESC: Using Monitor.
+
+#+TEXINFO_PRINTED_TITLE: Monitor
+#+SUBTITLE: for version 0.1.0
+
+* Copying
+:PROPERTIES:
+:COPYING:  t
+:END:
+
+This is the manual for {{{name}}} (version {{{version}}}), which
+provides an API for defining Monitors; abstract hooks with highly
+customizable behaviour.
+
+Copyright @@texinfo:@copyright{}@@ 2016 Ben Moon
+
+#+BEGIN_QUOTE
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+#+END_QUOTE
+
+* Introduction
+
+* Monitors
+
+** Defining Monitors
+
+To define a new monitor, use the ~define-monitor~ function. This function
+has three mandatory arguments: the monitor name; the parent; and the
+documentation string, and then takes an arbitrary amount of arguments in
+the form of ~:keyword~ ~value~ pairs.
+
+* GNU Free Documentation License
+:PROPERTIES:
+:APPENDIX: t
+:END:
+
+#+TEXINFO: @include fdl-1.3.texi
+
+* Index
+:PROPERTIES:
+:INDEX:    cp
+:END:
