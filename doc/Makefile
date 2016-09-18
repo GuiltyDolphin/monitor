@@ -1,6 +1,4 @@
-.PHONY: info texi
-
-all: info texi
+all: monitor.info monitor.texi
 
 EMACSBIN="emacs"
 RAW_DOCS=monitor.org
