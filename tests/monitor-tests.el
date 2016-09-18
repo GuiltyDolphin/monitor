@@ -258,7 +258,9 @@
         (fn-b '1+)
         (fn-c (lambda () "foo"))
         (fn-d '((lambda () "foo") (lambda () "bar")))
-        (fn-e '(1+ 1-)))
+        (fn-e '(1+ 1-))
+        (bfn-a 1)
+        (bfn-b '(1)))
       ; shouldn't error with no function
       (monitor--fn-run fn-a)
       ; function with arguments
@@ -268,7 +270,11 @@
       ;; multiple functions with no arguments
       (should (equal '("foo" "bar") (monitor--fn-run fn-d)))
       ;; multiple functions with arguments
-      (should (equal '(5 3) (monitor--fn-run fn-e 4)))))
+      (should (equal '(5 3) (monitor--fn-run fn-e 4)))
+      ;; wrong type (single element)
+      (should-error (monitor--fn-run bfn-a) :type 'wrong-type-argument)
+      ;; wrong type (in list)
+      (should-error (monitor--fn-run bfn-b) :type 'wrong-type-argument)))
 
 (ert-deftest monitor-test-monitor-instance-run ()
   "Tests for `monitor--instance-run'."

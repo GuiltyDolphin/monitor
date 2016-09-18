@@ -363,11 +363,17 @@ Will not error if PROP does not represent a valid function."
   (let ((f (monitor--instance-get-arg instance prop)))
     (apply 'monitor--fn-run f args)))
 
+(defun monitor--function-or-function-list-p (object)
+  "Return T if OBJECT is a function or a list of functions."
+  (or (functionp object) (and (listp object) (-all-p 'functionp object))))
+
 (defun monitor--fn-run (fn &rest args)
   "Run FN with ARGS as arguments and return the result.
 
 If FN is a list of functions, then run each element with ARGS as arguments and
 return a list of the results."
+  (unless (monitor--function-or-function-list-p fn)
+    (signal 'wrong-type-argument `(monitor--function-or-function-list-p ,fn)))
   (if (functionp fn) (apply fn args)
     (--map (apply it args) fn)))
 
