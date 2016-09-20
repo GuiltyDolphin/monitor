@@ -290,6 +290,26 @@
       ; different interpretation for instance functions and monitor functions.
       (should (eq nil (monitor--instance-run instance-a :test-fn-b))))))
 
+(ert-deftest monitor-test-monitor-run-option-with-parents ()
+  "Tests for `monitor-run-monitor-option-with-parents'."
+  (monitor--test-with-uninterned-symbols (monitor-parent monitor-middle monitor-child)
+    (let ((count-parent 0) (count-middle 0) (count-child 0))
+      (define-monitor monitor-parent nil "" :test-inc (lambda () (setq count-parent (1+ count-parent))))
+      (define-monitor monitor-middle monitor-parent "" :test-inc (lambda () (setq count-middle (1+ count-middle))))
+      (define-monitor monitor-child monitor-middle "" :test-inc (lambda () (setq count-child (1+ count-child))))
+      ;; no parents
+      (monitor-run-monitor-option-with-parents monitor-parent :test-inc)
+      (should (= 1 count-parent))
+      ;; has parent
+      (monitor-run-monitor-option-with-parents monitor-middle :test-inc)
+      (should (= 2 count-parent))
+      (should (= 1 count-middle))
+      ;; parent heirarchy
+      (monitor-run-monitor-option-with-parents monitor-child :test-inc)
+      (should (= 3 count-parent))
+      (should (= 2 count-middle))
+      (should (= 1 count-child)))))
+
 (ert-deftest monitor-test-base-monitor ()
   "Tests for the 'base monitor."
   (monitor--test-with-uninterned-symbols (monitor-symbol)

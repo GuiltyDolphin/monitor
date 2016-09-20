@@ -281,6 +281,19 @@ Don't do anything if the option is not a function."
   (let ((f (monitor--decl-get monitor prop)))
     (apply 'monitor--fn-run f args)))
 
+(defun monitor--has-option-p (monitor prop)
+  "T if MONITOR provides the PROP option."
+  (plist-member (monitor--decl-props monitor) prop))
+
+(defun monitor-run-monitor-option-with-parents (monitor prop &rest args)
+  "Run MONITOR's PROP option with ARGS as arguments.
+
+Do the same for each parent in MONITOR's heirarchy."
+  (list (when (monitor--has-option-p monitor prop)
+          (apply 'monitor-run-monitor-option monitor prop args))
+        (when (monitor--parent monitor)
+          (apply 'monitor-run-monitor-option-with-parents (monitor--parent monitor) prop args))))
+
 (defun monitor--instances (monitor)
   "Return existing instances of MONITOR."
   (monitor--meta-get monitor :instances))
