@@ -303,6 +303,17 @@ Do the same for each parent in MONITOR's heirarchy."
   (let ((instances (monitor--instances (monitor--instance-monitor instance))))
     (let ((-compare-fn 'monitor--instance-equal)) (-contains-p instances instance))))
 
+(defun monitor--instance-has-option-p (instance prop)
+  "T if INSTANCE provides the PROP option."
+  (plist-member (monitor--instance-args instance) prop))
+
+(define-error 'monitor-missing-required-option "missing required option")
+
+(defun monitor--instance-require-option (instance prop)
+  "Check that INSTANCE provides the PROP option, fail otherwise."
+  (unless (monitor--instance-has-option-p instance prop)
+    (signal 'monitor-missing-required-option (list prop))))
+
 (defun monitor-instance-create (monitor &rest args)
   "Define a new monitor instance.
 MONITOR is the monitor to watch.
@@ -313,6 +324,7 @@ documentation for MONITOR (and its parents) for which keys are applicable."
   (declare (indent 1))
   (let ((instance `(,monitor ,@args)))
     (unless (monitor--instance-existing-p instance)
+      (monitor-run-monitor-option-with-parents monitor :validate instance)
       (monitor-run-monitor-option monitor :create instance)
       (let ((instances (monitor--instances monitor)))
         (monitor--meta-put monitor :instances (cons instance instances))))

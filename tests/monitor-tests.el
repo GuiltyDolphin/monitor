@@ -192,18 +192,24 @@
 (ert-deftest monitor-test-instance-create ()
   "Tests for `monitor-instance-create'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
-    (let (instances)
+    (let (instances (validated 0))
       (monitor--test-build-test-monitor monitor-symbol nil
         :create (lambda (instance)
-                  (push instance instances)))
+                  (push instance instances))
+        :validate (lambda (instance) (setq validated (1+ validated))))
       (should (equal nil instances))
+      (should (= 0 validated))
       (let ((instance (monitor-instance-create monitor-symbol)))
+        ;; should have validated
+        (should (= 1 validated))
         (should (monitor--test-same-instances-p (list instance) instances))
         (monitor-instance-create monitor-symbol)
         ; already have an exact instance
         (should (monitor--test-same-instances-p (list instance) instances))
+        (should (= 1 validated))
         (let ((instance-b (monitor-instance-create monitor-symbol :a 1)))
-          (should (monitor--test-same-instances-p (list instance instance-b) instances)))))))
+          (should (monitor--test-same-instances-p (list instance instance-b) instances))
+          (should (= 2 validated)))))))
 
 (ert-deftest monitor-test-instance-destroy ()
   "Tests for `monitor--instance-destroy'."
