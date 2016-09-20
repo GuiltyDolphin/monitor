@@ -98,23 +98,27 @@ the form of @code{:keyword} @code{value} pairs.
 @node Monitor Functions
 @section Monitor Functions
 
+@findex define-monitor
+
 @itemize
 @item
 Function: define-monitor name parent doc &rest args
-@end itemize
-
-@findex define-monitor
 
 Define a new monitor (@ref{Defining Monitors,Defining Monitors}).
-
-@itemize
-@item
-Function: monitor-run-monitor-option monitor prop &rest args
 @end itemize
 
 @findex monitor-run-monitor-option
 
+@itemize
+@item
+Function: monitor-run-monitor-option monitor prop &rest args
+
 Run MONITOR's PROP option with ARGS as arguments.
+@end itemize
+
+@node Predefined Monitors
+@section Predefined Monitors
+
 @menu
 * base::
 * trigger::
