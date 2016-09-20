@@ -52,6 +52,20 @@ has three mandatory arguments: the monitor name; the parent; and the
 documentation string, and then takes an arbitrary amount of arguments in
 the form of ~:keyword~ ~value~ pairs.
 
+** Monitor Functions
+
+#+FINDEX: define-monitor
+
+- Function: define-monitor name parent doc &rest args
+
+  Define a new monitor ([[*Defining Monitors]]).
+
+#+FINDEX: monitor-run-monitor-option
+
+- Function: monitor-run-monitor-option monitor prop &rest args
+
+  Run MONITOR's PROP option with ARGS as arguments.
+
 * GNU Free Documentation License
 :PROPERTIES:
 :APPENDIX: t

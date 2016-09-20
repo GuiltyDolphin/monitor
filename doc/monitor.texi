@@ -63,6 +63,7 @@ GNU General Public License for more details.
 Monitors
 
 * Defining Monitors::
+* Monitor Functions::
 @end detailmenu
 @end menu
 
@@ -76,6 +77,7 @@ Monitors
 
 @menu
 * Defining Monitors::
+* Monitor Functions::
 @end menu
 
 @node Defining Monitors
@@ -85,6 +87,27 @@ To define a new monitor, use the @code{define-monitor} function. This function
 has three mandatory arguments: the monitor name; the parent; and the
 documentation string, and then takes an arbitrary amount of arguments in
 the form of @code{:keyword} @code{value} pairs.
+
+@node Monitor Functions
+@section Monitor Functions
+
+@itemize
+@item
+Function: define-monitor name parent doc &rest args
+@end itemize
+
+@findex define-monitor
+
+Define a new monitor (@ref{Defining Monitors,Defining Monitors}).
+
+@itemize
+@item
+Function: monitor-run-monitor-option monitor prop &rest args
+@end itemize
+
+@findex monitor-run-monitor-option
+
+Run MONITOR's PROP option with ARGS as arguments.
 
 @node GNU Free Documentation License
 @appendix GNU Free Documentation License
