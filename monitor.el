@@ -265,16 +265,16 @@ and values, the meaning and use of which may vary between monitors."
 (defun monitor--enable (monitor)
   "Enable MONITOR."
   (unless (monitor--enabled-p monitor)
-    (monitor--run-option monitor :enable monitor)
+    (monitor-run-monitor-option monitor :enable monitor)
     (monitor--meta-put monitor :enabled t)))
 
 (defun monitor--disable (monitor)
   "Disable MONITOR."
   (unless (monitor--disabled-p monitor)
-    (monitor--run-option monitor :disable monitor)
+    (monitor-run-monitor-option monitor :disable monitor)
     (monitor--meta-put monitor :enabled nil)))
 
-(defun monitor--run-option (monitor prop &rest args)
+(defun monitor-run-monitor-option (monitor prop &rest args)
   "Run MONITOR's PROP option with ARGS as arguments.
 
 Don't do anything if the option is not a function."
@@ -300,7 +300,7 @@ documentation for MONITOR (and its parents) for which keys are applicable."
   (declare (indent 1))
   (let ((instance `(,monitor ,@args)))
     (unless (monitor--instance-existing-p instance)
-      (monitor--run-option monitor :create instance)
+      (monitor-run-monitor-option monitor :create instance)
       (let ((instances (monitor--instances monitor)))
         (monitor--meta-put monitor :instances (cons instance instances))))
       instance))
@@ -311,7 +311,7 @@ documentation for MONITOR (and its parents) for which keys are applicable."
   "Destroy INSTANCE."
   (when (monitor--instance-existing-p instance)
     (let ((monitor (monitor--instance-monitor instance)))
-      (monitor--run-option monitor :destroy instance)
+      (monitor-run-monitor-option monitor :destroy instance)
       (let ((instances (monitor--instances monitor)))
         (monitor--meta-put monitor :instances (--reject (monitor--instance-equal it instance) instances))))))
 
