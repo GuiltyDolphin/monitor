@@ -64,6 +64,11 @@ Monitors
 
 * Defining Monitors::
 * Monitor Functions::
+* Predefined Monitors::
+
+Predefined Monitors
+
+* base::
 @end detailmenu
 @end menu
 
@@ -78,6 +83,7 @@ Monitors
 @menu
 * Defining Monitors::
 * Monitor Functions::
+* Predefined Monitors::
 @end menu
 
 @node Defining Monitors
@@ -108,6 +114,16 @@ Function: monitor-run-monitor-option monitor prop &rest args
 @findex monitor-run-monitor-option
 
 Run MONITOR's PROP option with ARGS as arguments.
+@menu
+* base::
+@end menu
+
+@node base
+@subsection The `base' Monitor
+
+
+Base monitor that should generally be used as the parent for other low-level
+monitors.
 
 @node GNU Free Documentation License
 @appendix GNU Free Documentation License
