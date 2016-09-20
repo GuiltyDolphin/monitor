@@ -409,6 +409,19 @@ return a list of the results."
   :enable nil
   :disable nil)
 
+(define-monitor 'trigger 'base
+  "Monitor that supports instantaneous triggering."
+  :trigger 'monitor--trigger-trigger
+  :validate 'monitor--trigger-validate)
+
+(defun monitor--trigger-trigger (instance &rest args)
+  "Run the :trigger function of INSTANCE with ARGS as arguments."
+  (apply 'monitor--instance-run instance :trigger args))
+
+(defun monitor--trigger-validate (instance)
+  "Validate INSTANCE."
+  (monitor--instance-require-option instance :trigger))
+
 
 
 (provide 'monitor)

@@ -324,5 +324,20 @@
     ;; we don't need any arguments for an instance
     (monitor monitor-symbol)))
 
+(ert-deftest monitor-test-trigger-monitor ()
+  "Tests for the 'trigger monitor."
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    ;; we should be able to make children
+    (define-monitor monitor-symbol 'trigger "")
+    ;; the :trigger option is required
+    (should-error (monitor monitor-symbol) :type 'monitor-missing-required-option)
+    (let* ((counter-a 0) (counter-b 0)
+           (instance (monitor monitor-symbol :trigger '((lambda () (setq counter-a (1+ counter-a)))
+                                                        (lambda () (setq counter-b (+ 2 counter-b)))))))
+      ;; syntax for running triggers
+      (monitor-run-monitor-option monitor-symbol :trigger instance)
+      (should (= 1 counter-a))
+      (should (= 2 counter-b)))))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

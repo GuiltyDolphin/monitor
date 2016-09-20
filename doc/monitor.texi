@@ -69,6 +69,7 @@ Monitors
 Predefined Monitors
 
 * base::
+* trigger::
 @end detailmenu
 @end menu
 
@@ -116,6 +117,7 @@ Function: monitor-run-monitor-option monitor prop &rest args
 Run MONITOR's PROP option with ARGS as arguments.
 @menu
 * base::
+* trigger::
 @end menu
 
 @node base
@@ -124,6 +126,27 @@ Run MONITOR's PROP option with ARGS as arguments.
 
 Base monitor that should generally be used as the parent for other low-level
 monitors.
+
+@node trigger
+@subsection The `trigger' Monitor
+
+
+Monitor for instantaneous triggering.
+
+Monitor options:
+
+@table @samp
+@item :trigger:
+use @code{monitor-run-option monitor :trigger instance args...} to
+trigger INSTANCE.
+@end table
+
+Instance options:
+
+@table @samp
+@item :trigger
+functions to be run when the instance triggers.
+@end table
 
 @node GNU Free Documentation License
 @appendix GNU Free Documentation License

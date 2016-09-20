@@ -77,6 +77,23 @@ the form of ~:keyword~ ~value~ pairs.
 Base monitor that should generally be used as the parent for other low-level
 monitors.
 
+*** The 'trigger' Monitor
+
+:PROPERTIES:
+:ALT_TITLE: trigger
+:END:
+
+Monitor for instantaneous triggering.
+
+Monitor options:
+
+- :trigger: :: use ~monitor-run-option monitor :trigger instance args...~ to
+               trigger INSTANCE.
+
+Instance options:
+
+- :trigger :: functions to be run when the instance triggers.
+
 * GNU Free Documentation License
 :PROPERTIES:
 :APPENDIX: t
