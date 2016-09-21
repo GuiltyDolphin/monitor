@@ -1,7 +1,7 @@
 \input texinfo    @c -*- texinfo -*-
 @c %**start of header
 @setfilename monitor.info
-@settitle Monitor 0.1.0
+@settitle Monitor 0.2.0
 @documentencoding UTF-8
 @documentlanguage en
 @syncodeindex pg cp
@@ -9,7 +9,7 @@
 
 @copying
 
-This is the manual for Monitor (version 0.1.0), which
+This is the manual for Monitor (version 0.2.0), which
 provides an API for defining Monitors; abstract hooks with highly
 customizable behaviour.
 
@@ -47,7 +47,7 @@ GNU General Public License for more details.
 
 @ifnottex
 @node Top
-@top Monitor 0.1.0
+@top Monitor 0.2.0
 @insertcopying
 @end ifnottex
 

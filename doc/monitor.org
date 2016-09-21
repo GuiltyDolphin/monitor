@@ -1,4 +1,4 @@
-#+MACRO: version 0.1.0
+#+MACRO: version 0.2.0
 #+MACRO: name Monitor
 #+MACRO: repo https://github.com/GuiltyDolphin/monitor
 
