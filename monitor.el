@@ -415,6 +415,36 @@ return a list of the results."
   "Remove from LIST the monitor instance INSTANCE."
   (--reject (monitor--instance-equal it instance) list))
 
+;;; Instance alists
+
+(defun monitor--instance-alist-instances (alist key)
+  "Return the instances in ALIST associated with KEY."
+  (cdr (assoc key alist)))
+
+(defun monitor--instance-alist-keys (alist)
+  "Return the keys of ALIST."
+  (-map 'car alist))
+
+(defun monitor--instance-alist-update-instances (alist key instances)
+  "Replace the instances in ALIST at KEY with INSTANCES.
+
+Add a new element to ALIST if there isn't already one with key KEY."
+  (let ((existing (assoc key alist)))
+    (if existing (setf (cdr existing) instances)
+      (push (cons key instances) alist))
+    alist))
+
+(defun monitor--instance-alist-add-instance (alist key instance)
+  "In ALIST add at KEY the instance INSTANCE if it is not already present."
+  (let ((instances (monitor--instance-alist-instances alist key)))
+    (monitor--instance-alist-update-instances
+     alist key (monitor--instance-list-add-instance instances instance))))
+
+(defun monitor--instance-alist-remove-instance (alist key instance)
+  "Remove from ALIST at KEY the instance INSTANCE if it is present."
+  (monitor--instance-alist-update-instances alist key
+                                            (--reject (monitor--instance-equal it instance)
+                                                      (monitor--instance-alist-instances alist key))))
 
 (define-monitor 'base nil
   "Base monitor which should be used as the parent for new, sparse monitors."

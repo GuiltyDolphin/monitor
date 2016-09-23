@@ -342,6 +342,33 @@
       ;; cannot remove non instances
       (should-error (monitor--instance-list-remove-instance ilist 'foo) :type 'wrong-type-argument))))
 
+(ert-deftest monitor-test-monitor-instance-alist ()
+  "Tests for monitor instance alists."
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    (define-monitor monitor-symbol nil "")
+    (let ((instance-a (monitor monitor-symbol))
+          (instance-b (monitor monitor-symbol :a 7))
+          ialist)
+      (should (eq nil (monitor--instance-alist-instances ialist 'a)))
+      (setq ialist (monitor--instance-alist-add-instance ialist 'a instance-a))
+      (should (monitor--test-same-instances-p (list instance-a) (monitor--instance-alist-instances ialist 'a)))
+      ;; already in alist at that key
+      (setq ialist (monitor--instance-alist-add-instance ialist 'a instance-a))
+      (should (monitor--test-same-instances-p (list instance-a) (monitor--instance-alist-instances ialist 'a)))
+      ;; can be under multiple keys
+      (setq ialist (monitor--instance-alist-add-instance ialist 'b instance-a))
+      (should (monitor--test-same-instances-p (list instance-a) (monitor--instance-alist-instances ialist 'b)))
+      (should (monitor--test-same-instances-p (list instance-a) (monitor--instance-alist-instances ialist 'a)))
+      ;; multiple instances under one key
+      (monitor--instance-alist-add-instance ialist 'b instance-b)
+      (should (monitor--test-same-instances-p (list instance-a instance-b) (monitor--instance-alist-instances ialist 'b)))
+      ;; can remove instances
+      (setq ialist (monitor--instance-alist-remove-instance ialist 'a instance-a))
+      (should (eq nil (monitor--instance-alist-instances ialist 'a)))
+      ;; not in alist
+      (setq ialist (monitor--instance-alist-remove-instance ialist 'a instance-a))
+      (should (eq nil (monitor--instance-alist-instances ialist 'a))))))
+
 (ert-deftest monitor-test-base-monitor ()
   "Tests for the 'base monitor."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
