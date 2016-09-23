@@ -363,11 +363,14 @@
       (monitor--instance-alist-add-instance ialist 'b instance-b)
       (should (monitor--test-same-instances-p (list instance-a instance-b) (monitor--instance-alist-instances ialist 'b)))
       ;; can remove instances
-      (setq ialist (monitor--instance-alist-remove-instance ialist 'a instance-a))
-      (should (eq nil (monitor--instance-alist-instances ialist 'a)))
+      (setq ialist (monitor--instance-alist-remove-instance ialist 'b instance-a))
+      (should (monitor--test-same-instances-p (list instance-b) (monitor--instance-alist-instances ialist 'b)))
       ;; not in alist
-      (setq ialist (monitor--instance-alist-remove-instance ialist 'a instance-a))
-      (should (eq nil (monitor--instance-alist-instances ialist 'a))))))
+      (setq ialist (monitor--instance-alist-remove-instance ialist 'b instance-a))
+      (should (monitor--test-same-instances-p (list instance-b) (monitor--instance-alist-instances ialist 'b)))
+      ;; no more instances deletes the entry
+      (setq ialist (monitor--instance-alist-remove-instance ialist 'b instance-b))
+      (should-not (-contains-p (monitor--instance-alist-keys ialist) 'b)))))
 
 (ert-deftest monitor-test-base-monitor ()
   "Tests for the 'base monitor."

@@ -428,10 +428,13 @@ return a list of the results."
 (defun monitor--instance-alist-update-instances (alist key instances)
   "Replace the instances in ALIST at KEY with INSTANCES.
 
-Add a new element to ALIST if there isn't already one with key KEY."
+Add a new element to ALIST if there isn't already one with key KEY.
+If INSTANCES is NIL then remove the element at KEY entirely."
   (let ((existing (assoc key alist)))
-    (if existing (setf (cdr existing) instances)
-      (push (cons key instances) alist))
+    (if instances
+        (if existing (setf (cdr existing) instances)
+          (push (cons key instances) alist))
+      (setq alist (--reject (equal (car it) key) alist)))
     alist))
 
 (defun monitor--instance-alist-add-instance (alist key instance)
