@@ -316,6 +316,32 @@
       (should (= 2 count-middle))
       (should (= 1 count-child)))))
 
+(ert-deftest monitor-test-monitor-instance-list ()
+  "Tests for monitor instance lists."
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    (define-monitor monitor-symbol nil "")
+    (let ((instance-a (monitor monitor-symbol))
+          (instance-b (monitor monitor-symbol :a 7))
+          ilist)
+      (should (eq nil ilist))
+      (setq ilist (monitor--instance-list-add-instance ilist instance-a))
+      (should (monitor--test-same-instances-p (list instance-a) ilist))
+      ;; already in list
+      (setq ilist (monitor--instance-list-add-instance ilist instance-a))
+      (should (monitor--test-same-instances-p (list instance-a) ilist))
+      ;; new instance
+      (setq ilist (monitor--instance-list-add-instance ilist instance-b))
+      (should (monitor--test-same-instances-p (list instance-a instance-b) ilist))
+      ;; cannot add non instances
+      (should-error (monitor--instance-list-add-instance ilist 'foo) :type 'wrong-type-argument)
+      (setq ilist (monitor--instance-list-remove-instance ilist instance-b))
+      (should (monitor--test-same-instances-p (list instance-a) ilist))
+      ;; not in list
+      (setq ilist (monitor--instance-list-remove-instance ilist instance-b))
+      (should (monitor--test-same-instances-p (list instance-a) ilist))
+      ;; cannot remove non instances
+      (should-error (monitor--instance-list-remove-instance ilist 'foo) :type 'wrong-type-argument))))
+
 (ert-deftest monitor-test-base-monitor ()
   "Tests for the 'base monitor."
   (monitor--test-with-uninterned-symbols (monitor-symbol)

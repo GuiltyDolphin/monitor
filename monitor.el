@@ -402,7 +402,19 @@ return a list of the results."
   (if (functionp fn) (apply fn args)
     (--map (apply it args) fn)))
 
-;;; Monitors
+;;;; Monitors
+
+;;; Instance lists
+
+(defun monitor--instance-list-add-instance (list instance)
+  "Add to LIST the instance INSTANCE if it is not already present."
+  (if (let ((-compare-fn 'monitor--instance-equal))
+        (-contains-p list instance)) list (push instance list)))
+
+(defun monitor--instance-list-remove-instance (list instance)
+  "Remove from LIST the monitor instance INSTANCE."
+  (--reject (monitor--instance-equal it instance) list))
+
 
 (define-monitor 'base nil
   "Base monitor which should be used as the parent for new, sparse monitors."
