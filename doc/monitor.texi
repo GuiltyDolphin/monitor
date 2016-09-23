@@ -71,6 +71,7 @@ Predefined Monitors
 * base::
 * trigger::
 * hook::
+* expression-value::
 @end detailmenu
 @end menu
 
@@ -124,6 +125,7 @@ Run MONITOR's PROP option with ARGS as arguments.
 * base::
 * trigger::
 * hook::
+* expression-value::
 @end menu
 
 @node base
@@ -166,6 +168,30 @@ Instance options:
 @table @samp
 @item :hook
 the hook to be monitored.
+@end table
+
+@node expression-value
+@subsection The `expression-value' Monitor
+
+
+Monitor for watching the values of expressions.
+
+Monitor options:
+
+@table @samp
+@item :check
+use @code{monitor-run-monitor-option monitor :check instance} to check a
+watched expression.
+@end table
+
+Instance options:
+
+@table @samp
+@item :expr
+the expression to be monitored.
+@item :pred
+predicate passed the old and new values of @code{:expr} and triggers the
+instance upon returning a non-NIL value.
 @end table
 
 @node GNU Free Documentation License

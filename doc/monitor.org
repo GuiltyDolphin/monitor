@@ -107,6 +107,25 @@ Instance options:
 
 - :hook :: the hook to be monitored.
 
+*** The 'expression-value' Monitor
+
+:PROPERTIES:
+:ALT_TITLE: expression-value
+:END:
+
+Monitor for watching the values of expressions.
+
+Monitor options:
+
+- :check :: use ~monitor-run-monitor-option monitor :check instance~ to check a
+            watched expression.
+
+Instance options:
+
+- :expr :: the expression to be monitored.
+- :pred :: predicate passed the old and new values of ~:expr~ and triggers the
+           instance upon returning a non-NIL value.
+
 * GNU Free Documentation License
 :PROPERTIES:
 :APPENDIX: t

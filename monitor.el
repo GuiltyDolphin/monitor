@@ -525,6 +525,34 @@ If INSTANCES is NIL then remove the element at KEY entirely."
   "Validate INSTANCE."
   (monitor--instance-require-option instance :hook))
 
+(define-monitor 'expression-value 'trigger
+  "Monitor expression values."
+  :check 'monitor--expression-value-check
+  :validate 'monitor--expression-value-validate)
+
+(defun monitor--expression-value-check (instance)
+  "Check INSTANCE."
+  (-let* ((expr (monitor--instance-get-arg instance :expr))
+          (old (monitor--instance-get-meta instance :value))
+          (new (eval expr)))
+    (when (monitor--expression-value-instantiated instance)
+      (when (monitor--instance-run instance :pred old new)
+        (monitor--instance-run instance :trigger)))
+  (monitor--expression-value-update-value instance new)))
+
+(defun monitor--expression-value-update-value (instance value)
+  "Update INSTANCE's known (tracked) value to VALUE."
+  (monitor--instance-put-meta instance :value value))
+
+(defun monitor--expression-value-instantiated (instance)
+  "T if an expression check has already been performed for INSTANCE."
+  (plist-member (monitor--instance-meta-plist instance) :value))
+
+(defun monitor--expression-value-validate (instance)
+  "Validate INSTANCE."
+  (monitor--instance-require-option instance :expr)
+  (monitor--instance-require-option instance :pred))
+
 
 
 (provide 'monitor)

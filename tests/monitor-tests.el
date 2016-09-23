@@ -433,5 +433,34 @@
       (monitor--remove-monitor monitor-symbol))
     (should (eq nil (assoc hook-symbol monitor--hook-instances)))))
 
+(ert-deftest monitor-test-expression-value-monitor ()
+  "Tests for the 'expression-value monitor."
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    ;; we should be able to make children
+    (define-monitor monitor-symbol 'expression-value "")
+    ;; the :expr option is required
+    (should-error (monitor monitor-symbol :trigger nil :pred nil) :type 'monitor-missing-required-option)
+    ;; the :pred option is required
+    (should-error (monitor monitor-symbol :trigger nil :expr nil) :type 'monitor-missing-required-option)
+    (unwind-protect
+        (let* ((counter-a 0) (counter-b 0)
+               (instance (monitor monitor-symbol
+                           :trigger (lambda () (setq counter-a (1+ counter-a)))
+                           :expr 'counter-b
+                           :pred (lambda (old new) (> new old)))))
+          (monitor--enable monitor-symbol)
+          (should (= 0 counter-a))
+          ;; value not yet checked
+          (monitor-run-monitor-option monitor-symbol :check instance)
+          (should (= 0 counter-a))
+          ;; value checked, but same
+          (monitor-run-monitor-option monitor-symbol :check instance)
+          (should (= 0 counter-a))
+          (setq counter-b (1+ counter-b))
+          ;; should trigger (value increased)
+          (monitor-run-monitor-option monitor-symbol :check instance)
+          (should (= 1 counter-a))
+      (monitor--remove-monitor monitor-symbol)))))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here
