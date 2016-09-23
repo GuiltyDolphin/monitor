@@ -179,6 +179,20 @@
       ; not in instance (in monitor), but don't fall back
       (should (eq nil (monitor--instance-get-arg instance :test-arg-b))))))
 
+(ert-deftest monitor-test-monitor-instance-get-meta ()
+  "Tests for `monitor--instance-get-meta'."
+  (monitor--test-with-uninterned-symbols (monitor-symbol)
+    (monitor--test-build-test-monitor monitor-symbol nil :test-arg-a 'ma)
+    (let ((instance (monitor-instance-create monitor-symbol :test-arg-a 'ia)))
+      ;; not a meta property
+      (should (eq nil (monitor--instance-get-meta instance :test-arg-a)))
+      (monitor--meta-put monitor-symbol :test-a 'foo)
+      ;; meta properties don't inherit
+      (should (eq nil (monitor--instance-get-meta instance :test-a)))
+      (monitor--instance-put-meta instance :test-b 'bar)
+      ;; declared in instance
+      (should (eq 'bar (monitor--instance-get-meta instance :test-b))))))
+
 (ert-deftest monitor-test-instance-existing-p ()
   "Tests for `monitor--instance-existing-p'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)

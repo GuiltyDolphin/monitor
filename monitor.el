@@ -322,7 +322,7 @@ ARGS is a list of (usually key-value) arguments that define the instance.
 The keys that have an effect in ARGS varies between monitors, see the
 documentation for MONITOR (and its parents) for which keys are applicable."
   (declare (indent 1))
-  (let ((instance `(,monitor ,@args)))
+  (let ((instance `(:args (:monitor ,monitor ,@args) :meta ,(monitor--make-plist))))
     (unless (monitor--instance-existing-p instance)
       (monitor-run-monitor-option-with-parents monitor :validate instance)
       (monitor-run-monitor-option monitor :create instance)
@@ -342,17 +342,17 @@ documentation for MONITOR (and its parents) for which keys are applicable."
 
 (defun monitor--instance-p (instance)
   "T if INSTANCE is a monitor instance."
-  (when (and (listp instance) (monitorp (car instance))) t))
+  (when (and (listp instance) (monitorp (plist-get (plist-get instance :args) :monitor))) t))
 
 (defun monitor--instance-args (instance)
   "Return the arguments used in the creation of INSTANCE."
   (unless (monitor--instance-p instance) (signal 'wrong-type-argument `(monitor-instance-p ,instance)))
-  (cdr instance))
+  (plist-get instance :args))
 
 (defun monitor--instance-monitor (instance)
   "Return the monitor used in the creation of INSTANCE."
   (unless (monitor--instance-p instance) (signal 'wrong-type-argument `(monitor-instance-p ,instance)))
-  (car instance))
+  (plist-get (monitor--instance-args instance) :monitor))
 
 (defun monitor--plist-equal-p (plist-a plist-b)
   "T if PLIST-A and PLIST-B have equal key-values."
@@ -380,6 +380,20 @@ If INSTANCE does not provide PROP, use the associated monitor's."
   (let ((args (monitor--instance-args instance)))
     (if (plist-member args prop) (plist-get args prop)
       (monitor--decl-get (monitor--instance-monitor instance) prop))))
+
+(defun monitor--instance-meta-plist (instance)
+  "Return INSTANCE's meta property list."
+  (plist-get instance :meta))
+
+(defun monitor--instance-get-meta (instance prop)
+  "Return the value of INSTANCE's PROP meta property."
+  (let ((plist (monitor--instance-meta-plist instance)))
+    (plist-get plist prop)))
+
+(defun monitor--instance-put-meta (instance prop value)
+  "Set the value of INSTANCE's meta property PROP to VALUE."
+  (let ((plist (monitor--instance-meta-plist instance)))
+    (plist-put plist prop value)))
 
 (defun monitor--instance-run (instance prop &rest args)
   "Run INSTANCE's PROP function with ARGS as arguments.
