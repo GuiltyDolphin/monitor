@@ -467,6 +467,50 @@ If INSTANCES is NIL then remove the element at KEY entirely."
   "Validate INSTANCE."
   (monitor--instance-require-option instance :trigger))
 
+(defvar monitor--hook-instances nil
+  "Instances of the 'hook monitor, along with their hooks.")
+
+(define-monitor 'hook 'trigger
+  "Monitor for triggering on hooks."
+  :enable 'monitor--hook-enable
+  :disable 'monitor--hook-disable
+  :create 'monitor--hook-create
+  :destroy 'monitor--hook-destroy
+  :validate 'monitor--hook-validate)
+
+(defun monitor--hook-run-instances (monitor hook)
+  "Run MONITOR's instances for HOOK."
+  (--each (monitor--instance-alist-instances monitor--hook-instances hook)
+    (monitor-run-monitor-option monitor :trigger it)))
+
+(defun monitor--hook-enable (monitor)
+  "Enable MONITOR."
+  (--each (monitor--instance-alist-keys monitor--hook-instances)
+    (add-hook it (lambda () (monitor--hook-run-instances monitor it)))))
+
+(defun monitor--hook-disable (monitor)
+  "Disable MONITOR."
+  (--each (monitor--instance-alist-keys monitor--hook-instances)
+    (remove-hook it (lambda () (monitor--hook-run-instances monitor it)))))
+
+(defun monitor--hook-create (instance)
+  "Create INSTANCE."
+  (setq monitor--hook-instances
+        (monitor--instance-alist-add-instance monitor--hook-instances
+                                              (monitor--instance-get-arg instance :hook)
+                                              instance)))
+
+(defun monitor--hook-destroy (instance)
+  "Destroy INSTANCE."
+  (setq monitor--hook-instances
+        (monitor--instance-alist-remove-instance monitor--hook-instances
+                                                 (monitor--instance-get-arg instance :hook)
+                                                 instance)))
+
+(defun monitor--hook-validate (instance)
+  "Validate INSTANCE."
+  (monitor--instance-require-option instance :hook))
+
 
 
 (provide 'monitor)

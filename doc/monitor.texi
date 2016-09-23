@@ -70,6 +70,7 @@ Predefined Monitors
 
 * base::
 * trigger::
+* hook::
 @end detailmenu
 @end menu
 
@@ -122,6 +123,7 @@ Run MONITOR's PROP option with ARGS as arguments.
 @menu
 * base::
 * trigger::
+* hook::
 @end menu
 
 @node base
@@ -150,6 +152,20 @@ Instance options:
 @table @samp
 @item :trigger
 functions to be run when the instance triggers.
+@end table
+
+@node hook
+@subsection The `hook' Monitor
+
+
+Monitor for hooks.
+Instances trigger when a hook is run.
+
+Instance options:
+
+@table @samp
+@item :hook
+the hook to be monitored.
 @end table
 
 @node GNU Free Documentation License

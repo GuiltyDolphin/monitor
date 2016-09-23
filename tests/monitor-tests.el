@@ -395,5 +395,29 @@
       (should (= 1 counter-a))
       (should (= 2 counter-b)))))
 
+(ert-deftest monitor-test-hook-monitor ()
+  "Tests for the 'hook monitor."
+  (monitor--test-with-uninterned-symbols (monitor-symbol hook-symbol)
+    ;; we should be able to make children
+    (define-monitor monitor-symbol 'hook "")
+    ;; the :hook option is required
+    (should-error (monitor monitor-symbol :trigger nil) :type 'monitor-missing-required-option)
+    (unwind-protect
+        (let* ((counter-a 0) (counter-b 0)
+               (instance (monitor monitor-symbol
+                           :trigger (lambda () (setq counter-a (1+ counter-a)))
+                           :hook hook-symbol)))
+          (should (= 0 counter-a))
+          ;; not enabled
+          (should (eq nil (monitor--enabled-p monitor-symbol)))
+          (run-hooks hook-symbol)
+          (should (= 0 counter-a))
+          (monitor--enable monitor-symbol)
+          ;; instances trigger when hook runs
+          (run-hooks hook-symbol)
+          (should (= 1 counter-a)))
+      (monitor--remove-monitor monitor-symbol))
+    (should (eq nil (assoc hook-symbol monitor--hook-instances)))))
+
 (provide 'monitor-tests)
 ;;; monitor-tests.el ends here

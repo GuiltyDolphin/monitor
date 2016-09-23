@@ -94,6 +94,19 @@ Instance options:
 
 - :trigger :: functions to be run when the instance triggers.
 
+*** The 'hook' Monitor
+
+:PROPERTIES:
+:ALT_TITLE: hook
+:END:
+
+Monitor for hooks.
+Instances trigger when a hook is run.
+
+Instance options:
+
+- :hook :: the hook to be monitored.
+
 * GNU Free Documentation License
 :PROPERTIES:
 :APPENDIX: t
