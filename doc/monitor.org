@@ -1,4 +1,4 @@
-#+MACRO: version 0.2.0
+#+MACRO: version 0.3.0
 #+MACRO: name Monitor
 #+MACRO: repo https://github.com/GuiltyDolphin/monitor
 
@@ -16,7 +16,7 @@
 #+TEXINFO_DIR_DESC: Monitor arbitrary aspects of Emacs.
 
 #+TEXINFO_PRINTED_TITLE: Monitor
-#+SUBTITLE: for version 0.1.0
+#+SUBTITLE: for version 0.3.0
 
 * Copying
 :PROPERTIES:
