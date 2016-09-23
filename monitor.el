@@ -1,4 +1,4 @@
-;;; monitor.el --- Utilities for monitoring expressions.
+;;; monitor.el --- Utilities for monitoring expressions. -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2016 Ben Moon
 ;; Author: Ben Moon <guiltydolphin@gmail.com>
