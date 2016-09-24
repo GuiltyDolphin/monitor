@@ -103,6 +103,10 @@ Instance options:
 Monitor for hooks.
 Instances trigger when a hook is run.
 
+Monitor options:
+
+- :hook-ivar :: name of variable to use for storing hook meta information.
+
 Instance options:
 
 - :hook :: the hook to be monitored.

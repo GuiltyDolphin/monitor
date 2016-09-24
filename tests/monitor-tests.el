@@ -411,16 +411,22 @@
 
 (ert-deftest monitor-test-hook-monitor ()
   "Tests for the 'hook monitor."
-  (monitor--test-with-uninterned-symbols (monitor-symbol hook-symbol)
+  (monitor--test-with-uninterned-symbols (monitor-symbol hook-symbol ivar)
+    (set ivar nil)
     ;; we should be able to make children
-    (define-monitor monitor-symbol 'hook "")
+    (define-monitor monitor-symbol 'hook "" :hook-ivar ivar)
     ;; the :hook option is required
     (should-error (monitor monitor-symbol :trigger nil) :type 'monitor-missing-required-option)
     (unwind-protect
+        (should (eq nil (symbol-value ivar)))
         (let* ((counter-a 0) (counter-b 0)
                (instance (monitor monitor-symbol
                            :trigger (lambda () (setq counter-a (1+ counter-a)))
                            :hook hook-symbol)))
+          ;; instance should be stored in specified instance variable
+          (should (monitor--test-same-instances-p
+                   (list instance)
+                   (monitor--instance-alist-instances (symbol-value ivar) hook-symbol)))
           (should (= 0 counter-a))
           ;; not enabled
           (should (eq nil (monitor--enabled-p monitor-symbol)))
@@ -431,7 +437,8 @@
           (run-hooks hook-symbol)
           (should (= 1 counter-a)))
       (monitor--remove-monitor monitor-symbol))
-    (should (eq nil (assoc hook-symbol monitor--hook-instances)))))
+    (should (eq nil (monitor--instance-alist-instances monitor--hook-instances hook-symbol)))
+    (should (eq nil (symbol-value ivar)))))
 
 (ert-deftest monitor-test-expression-value-monitor ()
   "Tests for the 'expression-value monitor."
