@@ -419,6 +419,7 @@
     (should-error (monitor monitor-symbol :trigger nil) :type 'monitor-missing-required-option)
     (unwind-protect
         (should (eq nil (symbol-value ivar)))
+        (set hook-symbol nil)
         (let* ((counter-a 0) (counter-b 0)
                (instance (monitor monitor-symbol
                            :trigger (lambda () (setq counter-a (1+ counter-a)))
@@ -428,14 +429,18 @@
                    (list instance)
                    (monitor--instance-alist-instances (symbol-value ivar) hook-symbol)))
           (should (= 0 counter-a))
+          (should (eq nil (symbol-value hook-symbol)))
           ;; not enabled
           (should (eq nil (monitor--enabled-p monitor-symbol)))
           (run-hooks hook-symbol)
           (should (= 0 counter-a))
           (monitor--enable monitor-symbol)
+          (should (= 1 (length (symbol-value hook-symbol))))
           ;; instances trigger when hook runs
           (run-hooks hook-symbol)
-          (should (= 1 counter-a)))
+          (should (= 1 counter-a))
+          (monitor--disable monitor-symbol)
+          (should (eq nil (symbol-value hook-symbol))))
       (monitor--remove-monitor monitor-symbol))
     (should (eq nil (monitor--instance-alist-instances monitor--hook-instances hook-symbol)))
     (should (eq nil (symbol-value ivar)))))
