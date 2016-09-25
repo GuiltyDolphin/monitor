@@ -102,7 +102,7 @@ and values, the meaning and use of which may vary between monitors."
 
 (defun monitor--remove-monitor (monitor)
   "Remove MONITOR's definition as a monitor."
-  (monitor--disable monitor)
+  (monitor-disable monitor)
   (monitor--destroy-instances monitor)
   (put monitor monitor--plist-attribute nil))
 
@@ -155,13 +155,13 @@ and values, the meaning and use of which may vary between monitors."
   "T if MONITOR is disabled."
   (not (monitor--enabled-p monitor)))
 
-(defun monitor--enable (monitor)
+(defun monitor-enable (monitor)
   "Enable MONITOR."
   (unless (monitor--enabled-p monitor)
     (monitor-run-monitor-option monitor :enable monitor)
     (monitor--meta-put monitor :enabled t)))
 
-(defun monitor--disable (monitor)
+(defun monitor-disable (monitor)
   "Disable MONITOR."
   (unless (monitor--disabled-p monitor)
     (monitor-run-monitor-option monitor :disable monitor)
