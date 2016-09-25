@@ -395,15 +395,19 @@ If INSTANCES is NIL then remove the element at KEY entirely."
   (--each (monitor--instance-alist-instances (monitor--hook-ivar monitor) hook)
     (monitor-run-monitor-option monitor :trigger it)))
 
+(defun monitor--hook-runner-fn (monitor hook)
+  "Return a function for running MONITOR's HOOK associated instances."
+  (lambda () (monitor--hook-run-instances monitor hook)))
+
 (defun monitor--hook-enable (monitor)
   "Enable MONITOR."
   (--each (monitor--instance-alist-keys (monitor--hook-ivar monitor))
-    (add-hook it (lambda () (monitor--hook-run-instances monitor it)))))
+    (add-hook it (monitor--hook-runner-fn monitor it))))
 
 (defun monitor--hook-disable (monitor)
   "Disable MONITOR."
   (--each (monitor--instance-alist-keys (monitor--hook-ivar monitor))
-    (remove-hook it (lambda () (monitor--hook-run-instances monitor it)))))
+    (remove-hook it (monitor--hook-runner-fn monitor it))))
 
 (defun monitor--hook-create (instance)
   "Create INSTANCE."
