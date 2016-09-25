@@ -118,6 +118,24 @@ Function: monitor-run-monitor-option monitor prop &rest args
 Run MONITOR's PROP option with ARGS as arguments.
 @end itemize
 
+@findex monitor-enable
+
+@itemize
+@item
+Function: monitor-enable monitor
+
+Globally enable a monitor.
+@end itemize
+
+@findex monitor-disable
+
+@itemize
+@item
+Function: monitor-disable monitor
+
+Globally disable a monitor.
+@end itemize
+
 @node Predefined Monitors
 @section Predefined Monitors
 

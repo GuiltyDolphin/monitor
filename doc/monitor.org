@@ -66,6 +66,18 @@ the form of ~:keyword~ ~value~ pairs.
 
   Run MONITOR's PROP option with ARGS as arguments.
 
+#+FINDEX: monitor-enable
+
+- Function: monitor-enable monitor
+
+  Globally enable a monitor.
+
+#+FINDEX: monitor-disable
+
+- Function: monitor-disable monitor
+
+  Globally disable a monitor.
+
 ** Predefined Monitors
 
 *** The 'base' Monitor
