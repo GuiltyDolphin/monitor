@@ -1,7 +1,7 @@
 ;;; monitor.el --- Utilities for monitoring expressions. -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2016 Ben Moon
-;; Author: Ben Moon <guiltydolphin@gmail.com>
+;; Author: Ben Moon <software@guiltydolphin.com>
 ;; URL: https://github.com/guiltydolphin/monitor
 ;; Git-Repository: git://github.com/guiltydolphin/monitor.git
 ;; Created: 2016-08-17
