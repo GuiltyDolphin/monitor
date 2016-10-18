@@ -190,7 +190,7 @@ Monitor options:
 
 @table @samp
 @item :hook-ivar
-name of variable to use for storing hook meta information
+name of variable to use for storing hook meta information.
 @end table
 
 Instance options:
