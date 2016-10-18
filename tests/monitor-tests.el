@@ -400,7 +400,7 @@
     ;; we should be able to make children
     (define-monitor monitor-symbol 'trigger "")
     ;; the :trigger option is required
-    (should-error (monitor monitor-symbol) :type 'monitor-missing-required-option)
+    (should-error (monitor monitor-symbol))
     (let* ((counter-a 0) (counter-b 0)
            (instance (monitor monitor-symbol :trigger '((lambda () (setq counter-a (1+ counter-a)))
                                                         (lambda () (setq counter-b (+ 2 counter-b)))))))
@@ -416,7 +416,7 @@
     ;; we should be able to make children
     (define-monitor monitor-symbol 'hook "" :hook-ivar ivar)
     ;; the :hook option is required
-    (should-error (monitor monitor-symbol :trigger nil) :type 'monitor-missing-required-option)
+    (should-error (monitor monitor-symbol :trigger nil))
     (unwind-protect
         (should (eq nil (symbol-value ivar)))
         (set hook-symbol nil)
@@ -451,9 +451,9 @@
     ;; we should be able to make children
     (define-monitor monitor-symbol 'expression-value "")
     ;; the :expr option is required
-    (should-error (monitor monitor-symbol :trigger nil :pred nil) :type 'monitor-missing-required-option)
+    (should-error (monitor monitor-symbol :trigger nil :pred nil))
     ;; the :pred option is required
-    (should-error (monitor monitor-symbol :trigger nil :expr nil) :type 'monitor-missing-required-option)
+    (should-error (monitor monitor-symbol :trigger nil :expr nil))
     (unwind-protect
         (let* ((counter-a 0) (counter-b 0)
                (instance (monitor monitor-symbol
