@@ -55,6 +55,7 @@ GNU General Public License for more details.
 * Introduction::
 * Monitors::
 * Monitor Instances::
+* Examples::
 * GNU Free Documentation License::
 * Index::
 
@@ -77,6 +78,10 @@ Monitor Instances
 
 * Defining Instances::
 * Instance Functions::
+
+Examples
+
+* Using Instance Variables::
 @end detailmenu
 @end menu
 
@@ -253,6 +258,51 @@ Function: monitor monitor &rest args
 Define a new monitor instance for the monitor MONITOR.
 Use ARGS to configure the behaviour of the instance.
 @end itemize
+
+@node Examples
+@chapter Examples
+
+@menu
+* Using Instance Variables::
+@end menu
+
+@node Using Instance Variables
+@section Using Instance Variables
+
+@lisp
+;; We must declare the instance variable independently of the monitor.
+(defvar hook-ivar nil)
+
+;; We can now use the instance variable to create a derived instance of
+;; 'hook, which we can modify without changing any other 'hook monitors.
+(define-monitor 'my-hook-monitor 'hook
+  "My monitor for hooks."
+  :hook-ivar 'hook-ivar)
+
+;; Every time the 'post-command-hook is run, check to see if the value of
+;; (point) has changed.
+(defvar my-post-command-instance
+  (monitor 'my-hook-monitor
+    :hook 'post-command-hook
+    :trigger 'my-check-point))
+
+;; Whenever this instance is run, if the value of point has changed then
+;; 'my-run-stuff will be run.
+(defvar my-point-check-instance
+  (monitor 'expression-value
+    :expr '(point)
+    :pred '/=
+    :trigger 'my-run-stuff
+
+;; Run the monitor instance for checking the value of point.
+(defun my-check-point ()
+  "Check the current point for region change."
+  (monitor-run-monitor-option 'expression-value :check my-point-check-instance))
+
+(defun my-run-stuff ()
+  "Go wild."
+  (print "Rainbow!"))
+@end lisp
 
 @node GNU Free Documentation License
 @appendix GNU Free Documentation License
