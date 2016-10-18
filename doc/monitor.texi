@@ -54,6 +54,7 @@ GNU General Public License for more details.
 @menu
 * Introduction::
 * Monitors::
+* Monitor Instances::
 * GNU Free Documentation License::
 * Index::
 
@@ -72,6 +73,10 @@ Predefined Monitors
 * trigger::
 * hook::
 * expression-value::
+Monitor Instances
+
+* Defining Instances::
+* Instance Functions::
 @end detailmenu
 @end menu
 
@@ -218,6 +223,36 @@ the expression to be monitored.
 predicate passed the old and new values of @code{:expr} and triggers the
 instance upon returning a non-NIL value.
 @end table
+
+@node Monitor Instances
+@chapter Monitor Instances
+
+@menu
+* Defining Instances::
+* Instance Functions::
+@end menu
+
+@node Defining Instances
+@section Defining Instances
+
+To define a monitor instance, use the @code{monitor} function. This function takes
+a single required argument (a symbol) specifying the monitor to attach the
+instance to, and a series of key-value arguments that are used to configure
+the instance and whose meaning may vary depending on which monitor is being
+used.
+
+@node Instance Functions
+@section Instance Functions
+
+@findex monitor
+
+@itemize
+@item
+Function: monitor monitor &rest args
+
+Define a new monitor instance for the monitor MONITOR.
+Use ARGS to configure the behaviour of the instance.
+@end itemize
 
 @node GNU Free Documentation License
 @appendix GNU Free Documentation License
