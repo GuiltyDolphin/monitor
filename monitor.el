@@ -455,7 +455,5 @@ If INSTANCES is NIL then remove the element at KEY entirely."
   (monitor--instance-require-option instance :expr)
   (monitor--instance-require-option instance :pred))
 
-
-
 (provide 'monitor)
 ;;; monitor.el ends here
