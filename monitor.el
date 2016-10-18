@@ -200,7 +200,7 @@ Do the same for each parent in MONITOR's heirarchy."
   "T if INSTANCE provides the PROP option."
   (plist-member (monitor--instance-args instance) prop))
 
-(when (boundp 'define-error)
+(when (functionp 'define-error)
   (define-error 'monitor-missing-required-option "missing required option"))
 
 (defun monitor--instance-require-option (instance prop)
