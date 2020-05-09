@@ -1,7 +1,10 @@
-.PHONY: build install test
+.PHONY: build doc install test
 
 build : install
 	@cask build
+
+doc :
+	@cd doc && make all
 
 install :
 	@cask install
