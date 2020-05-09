@@ -263,6 +263,10 @@ Use ARGS to configure the behaviour of the instance.
 @node Using Instance Variables
 @section Using Instance Variables
 
+The following example shows how to utilise the @code{'hook} and
+@code{'expression-value} monitors to print some text every time the
+value of @code{(point)} is changed.
+
 @lisp
 ;; We must declare the instance variable independently of the monitor.
 (defvar hook-ivar nil)

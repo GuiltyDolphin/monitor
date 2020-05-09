@@ -161,6 +161,10 @@ used.
 
 ** Using Instance Variables
 
+The following example shows how to utilise the ~'hook~ and
+~'expression-value~ monitors to print some text every time the
+value of ~(point)~ is changed.
+
 #+BEGIN_SRC emacs-lisp
 ;; We must declare the instance variable independently of the monitor.
 (defvar hook-ivar nil)
