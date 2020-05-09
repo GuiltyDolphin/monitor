@@ -27,7 +27,7 @@ This is the manual for {{{name}}} (version {{{version}}}), which
 provides an API for defining Monitors; abstract hooks with highly
 customizable behaviour.
 
-Copyright @@texinfo:@copyright{}@@ 2016 Ben Moon
+Copyright @@texinfo:@copyright{}@@ 2016, 2020 Ben Moon
 
 #+BEGIN_QUOTE
 This program is free software: you can redistribute it and/or modify
