@@ -81,7 +81,6 @@ the form of ~:keyword~ ~value~ pairs.
 ** Predefined Monitors
 
 *** The 'base' Monitor
-
 :PROPERTIES:
 :ALT_TITLE: base
 :END:
@@ -90,7 +89,6 @@ Base monitor that should generally be used as the parent for other low-level
 monitors.
 
 *** The 'trigger' Monitor
-
 :PROPERTIES:
 :ALT_TITLE: trigger
 :END:
@@ -107,7 +105,6 @@ Instance options:
 - :trigger :: functions to be run when the instance triggers.
 
 *** The 'hook' Monitor
-
 :PROPERTIES:
 :ALT_TITLE: hook
 :END:
@@ -124,7 +121,6 @@ Instance options:
 - :hook :: the hook to be monitored.
 
 *** The 'expression-value' Monitor
-
 :PROPERTIES:
 :ALT_TITLE: expression-value
 :END:

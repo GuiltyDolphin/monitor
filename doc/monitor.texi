@@ -68,10 +68,10 @@ Monitors
 
 Predefined Monitors
 
-* The 'base' Monitor::
-* The 'trigger' Monitor::
-* The 'hook' Monitor::
-* The 'expression-value' Monitor::
+* base::
+* trigger::
+* hook::
+* expression-value::
 
 Monitor Instances
 
@@ -148,24 +148,20 @@ Globally disable a monitor.
 @section Predefined Monitors
 
 @menu
-* The 'base' Monitor::
-* The 'trigger' Monitor::
-* The 'hook' Monitor::
-* The 'expression-value' Monitor::
+* base::
+* trigger::
+* hook::
+* expression-value::
 @end menu
 
-@node The 'base' Monitor
+@node base
 @subsection The 'base' Monitor
-
-:ALT@math{_TITLE}: base
 
 Base monitor that should generally be used as the parent for other low-level
 monitors.
 
-@node The 'trigger' Monitor
+@node trigger
 @subsection The 'trigger' Monitor
-
-:ALT@math{_TITLE}: trigger
 
 Monitor for instantaneous triggering.
 
@@ -184,10 +180,8 @@ Instance options:
 functions to be run when the instance triggers.
 @end table
 
-@node The 'hook' Monitor
+@node hook
 @subsection The 'hook' Monitor
-
-:ALT@math{_TITLE}: hook
 
 Monitor for hooks.
 Instances trigger when a hook is run.
@@ -206,10 +200,8 @@ Instance options:
 the hook to be monitored.
 @end table
 
-@node The 'expression-value' Monitor
+@node expression-value
 @subsection The 'expression-value' Monitor
-
-:ALT@math{_TITLE}: expression-value
 
 Monitor for watching the values of expressions.
 
