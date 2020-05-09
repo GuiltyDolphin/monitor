@@ -7,7 +7,7 @@
 ;; Created: 2016-08-17
 ;; Version: 0.4.0
 ;; Keywords: lisp, monitor, utility
-;; Package-Requires: ((dash "2.13.0") (emacs "24"))
+;; Package-Requires: ((dash "2.17.0") (emacs "24"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
