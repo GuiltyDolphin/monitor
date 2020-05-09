@@ -16,7 +16,7 @@
 #+TEXINFO_DIR_DESC: Monitor arbitrary aspects of Emacs.
 
 #+TEXINFO_PRINTED_TITLE: Monitor
-#+SUBTITLE: for version 0.3.0
+#+SUBTITLE: for version {{{version}}}
 
 * Copying
 :PROPERTIES:
