@@ -1,1 +1,16 @@
+# Backup
+
+*~
+
+# Emacs Lisp
+
 *.elc
+
+# Development files
+
+.cask/
+.psm/
+
+# Org build files
+
+*.info
