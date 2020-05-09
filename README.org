@@ -24,3 +24,11 @@ To define a new monitor, use the ~define-monitor~ function. This function
 has three mandatory arguments: the monitor name; the parent; and the
 documentation string, and then takes an arbitrary amount of arguments in
 the form of ~:keyword~ ~value~ pairs.
+
+* Development
+
+To test =monitor=, make sure you run =make install= before
+running =make test= in the parent directory.
+
+Once you've run =make install= you shouldn't need to do so
+again unless the dependencies change or become outdated.
