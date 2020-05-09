@@ -1,14 +1,14 @@
 \input texinfo    @c -*- texinfo -*-
 @c %**start of header
 @setfilename monitor.info
-@settitle Monitor 0.3.0
+@settitle Monitor 0.4.0
 @documentencoding UTF-8
 @documentlanguage en
 @syncodeindex pg cp
 @c %**end of header
 
 @copying
-This is the manual for Monitor (version 0.3.0), which
+This is the manual for Monitor (version 0.4.0), which
 provides an API for defining Monitors; abstract hooks with highly
 customizable behaviour.
 
@@ -35,7 +35,7 @@ GNU General Public License for more details.
 @finalout
 @titlepage
 @title Monitor
-@subtitle for version 0.3.0
+@subtitle for version 0.4.0
 @author Ben Moon (@email{software@@guiltydolphin.com})
 @page
 @vskip 0pt plus 1filll
@@ -46,7 +46,7 @@ GNU General Public License for more details.
 
 @ifnottex
 @node Top
-@top Monitor 0.3.0
+@top Monitor 0.4.0
 @end ifnottex
 
 @menu
