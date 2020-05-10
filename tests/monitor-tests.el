@@ -397,8 +397,8 @@
 (ert-deftest monitor-test-trigger-monitor ()
   "Tests for the 'trigger monitor."
   (monitor--test-with-uninterned-symbols (monitor-symbol counter-a counter-b)
-    (eval `(setq ,counter-a 0))
-    (eval `(setq ,counter-b 0))
+    (set counter-a 0)
+    (set counter-b 0)
     ;; we should be able to make children
     (define-monitor monitor-symbol 'trigger "")
     ;; the :trigger option is required
@@ -449,7 +449,7 @@
 (ert-deftest monitor-test-expression-value-monitor ()
   "Tests for the 'expression-value monitor."
   (monitor--test-with-uninterned-symbols (monitor-symbol counter-b)
-    (eval `(setq ,counter-b 0))
+    (set counter-b 0)
     ;; we should be able to make children
     (define-monitor monitor-symbol 'expression-value "")
     ;; the :expr option is required
@@ -470,7 +470,7 @@
           ;; value checked, but same
           (monitor-run-monitor-option monitor-symbol :check instance)
           (should (= 0 counter-a))
-          (eval `(setq ,counter-b (1+ ,counter-b)))
+          (set counter-b (1+ (symbol-value counter-b)))
           ;; should trigger (value increased)
           (monitor-run-monitor-option monitor-symbol :check instance)
           (should (= 1 counter-a))
