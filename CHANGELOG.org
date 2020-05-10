@@ -7,6 +7,7 @@
 
 ** Added
 
+- new custom error =monitor--missing-required-option=
 - new development files
   - =Cask=
   - =Makefile=

@@ -33,6 +33,12 @@
   "T if LISTA has the same monitor instances as LISTB."
   (let ((-compare-fn 'monitor--instance-equal)) (-same-items-p lista listb)))
 
+(defmacro monitor-test--should-error-missing-option (opt form)
+  "Assert that FORM throws an error indicating that the OPT option should be present."
+  (declare (indent 1))
+  `(should (equal '(monitor--missing-required-option . ,opt)
+                  (should-error ,form :type 'monitor--missing-required-option))))
+
 (ert-deftest monitor-test-monitorp ()
   "Tests for `monitorp'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
@@ -402,7 +408,8 @@
     ;; we should be able to make children
     (define-monitor monitor-symbol 'trigger "")
     ;; the :trigger option is required
-    (should-error (monitor monitor-symbol))
+    (monitor-test--should-error-missing-option :trigger
+      (monitor monitor-symbol))
     (let* ((instance (monitor monitor-symbol :trigger `((lambda () (setq ,counter-a (1+ ,counter-a)))
                                                         (lambda () (setq ,counter-b (+ 2 ,counter-b)))))))
       ;; syntax for running triggers
@@ -417,7 +424,8 @@
     ;; we should be able to make children
     (define-monitor monitor-symbol 'hook "" :hook-ivar ivar)
     ;; the :hook option is required
-    (should-error (monitor monitor-symbol :trigger nil))
+    (monitor-test--should-error-missing-option :hook
+      (monitor monitor-symbol :trigger nil))
     (unwind-protect
         (should (eq nil (symbol-value ivar)))
         (set hook-symbol nil)
@@ -453,9 +461,11 @@
     ;; we should be able to make children
     (define-monitor monitor-symbol 'expression-value "")
     ;; the :expr option is required
-    (should-error (monitor monitor-symbol :trigger nil :pred nil))
+    (monitor-test--should-error-missing-option :expr
+      (monitor monitor-symbol :trigger nil :pred nil))
     ;; the :pred option is required
-    (should-error (monitor monitor-symbol :trigger nil :expr nil))
+    (monitor-test--should-error-missing-option :pred
+      (monitor monitor-symbol :trigger nil :expr nil))
     (unwind-protect
         (let* ((counter-a 0)
                (instance (monitor monitor-symbol

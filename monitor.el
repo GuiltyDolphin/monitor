@@ -49,6 +49,9 @@
   :group 'lisp
   :prefix 'monitor-)
 
+(define-error 'monitor--missing-required-option
+  "Missing required option")
+
 (defvar monitor--plist-attribute 'monitor-type
   "Key used to access a monitor definition from a symbol.")
 
@@ -203,7 +206,7 @@ Do the same for each parent in MONITOR's heirarchy."
 (defun monitor--instance-require-option (instance prop)
   "Check that INSTANCE provides the PROP option, fail otherwise."
   (unless (monitor--instance-has-option-p instance prop)
-    (error "Missing required option: %s" prop)))
+    (signal 'monitor--missing-required-option prop)))
 
 (defun monitor-instance-create (monitor &rest args)
   "Define a new monitor instance.
