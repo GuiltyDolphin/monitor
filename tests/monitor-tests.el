@@ -1,4 +1,4 @@
-;;; monitor-tests.el
+;;; monitor-tests.el --- Tests for monitor.el -*- lexical-binding: t -*-
 ;;; Code:
 
 (require 'ert)
@@ -396,18 +396,19 @@
 
 (ert-deftest monitor-test-trigger-monitor ()
   "Tests for the 'trigger monitor."
-  (monitor--test-with-uninterned-symbols (monitor-symbol)
+  (monitor--test-with-uninterned-symbols (monitor-symbol counter-a counter-b)
+    (eval `(setq ,counter-a 0))
+    (eval `(setq ,counter-b 0))
     ;; we should be able to make children
     (define-monitor monitor-symbol 'trigger "")
     ;; the :trigger option is required
     (should-error (monitor monitor-symbol))
-    (let* ((counter-a 0) (counter-b 0)
-           (instance (monitor monitor-symbol :trigger '((lambda () (setq counter-a (1+ counter-a)))
-                                                        (lambda () (setq counter-b (+ 2 counter-b)))))))
+    (let* ((instance (monitor monitor-symbol :trigger `((lambda () (setq ,counter-a (1+ ,counter-a)))
+                                                        (lambda () (setq ,counter-b (+ 2 ,counter-b)))))))
       ;; syntax for running triggers
       (monitor-run-monitor-option monitor-symbol :trigger instance)
-      (should (= 1 counter-a))
-      (should (= 2 counter-b)))))
+      (should (= 1 (symbol-value counter-a)))
+      (should (= 2 (symbol-value counter-b))))))
 
 (ert-deftest monitor-test-hook-monitor ()
   "Tests for the 'hook monitor."
@@ -447,7 +448,8 @@
 
 (ert-deftest monitor-test-expression-value-monitor ()
   "Tests for the 'expression-value monitor."
-  (monitor--test-with-uninterned-symbols (monitor-symbol)
+  (monitor--test-with-uninterned-symbols (monitor-symbol counter-b)
+    (eval `(setq ,counter-b 0))
     ;; we should be able to make children
     (define-monitor monitor-symbol 'expression-value "")
     ;; the :expr option is required
@@ -455,10 +457,10 @@
     ;; the :pred option is required
     (should-error (monitor monitor-symbol :trigger nil :expr nil))
     (unwind-protect
-        (let* ((counter-a 0) (counter-b 0)
+        (let* ((counter-a 0)
                (instance (monitor monitor-symbol
                            :trigger (lambda () (setq counter-a (1+ counter-a)))
-                           :expr 'counter-b
+                           :expr counter-b
                            :pred (lambda (old new) (> new old)))))
           (monitor-enable monitor-symbol)
           (should (= 0 counter-a))
@@ -468,7 +470,7 @@
           ;; value checked, but same
           (monitor-run-monitor-option monitor-symbol :check instance)
           (should (= 0 counter-a))
-          (setq counter-b (1+ counter-b))
+          (eval `(setq ,counter-b (1+ ,counter-b)))
           ;; should trigger (value increased)
           (monitor-run-monitor-option monitor-symbol :check instance)
           (should (= 1 counter-a))
