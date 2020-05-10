@@ -50,7 +50,7 @@
   :prefix 'monitor-)
 
 (define-error 'monitor--missing-required-option
-  "Missing required option")
+  "Missing required option(s)")
 
 (defvar monitor--plist-attribute 'monitor-type
   "Key used to access a monitor definition from a symbol.")
@@ -203,10 +203,14 @@ Do the same for each parent in MONITOR's heirarchy."
   "T if INSTANCE provides the PROP option."
   (plist-member (monitor--instance-args instance) prop))
 
-(defun monitor--instance-require-option (instance prop)
-  "Check that INSTANCE provides the PROP option, fail otherwise."
-  (unless (monitor--instance-has-option-p instance prop)
-    (signal 'monitor--missing-required-option prop)))
+(defun monitor--instance-require-options (instance props)
+  "Check that INSTANCE provides each option in PROPS, fail otherwise."
+  (let ((missing-opts))
+    (dolist (prop props)
+      (unless (monitor--instance-has-option-p instance prop)
+        (push prop missing-opts)))
+    (unless (null missing-opts)
+      (signal 'monitor--missing-required-option (nreverse missing-opts)))))
 
 (defun monitor-instance-create (monitor &rest args)
   "Define a new monitor instance.
@@ -373,7 +377,7 @@ If INSTANCES is NIL then remove the element at KEY entirely."
 
 (defun monitor--trigger-validate (instance)
   "Validate INSTANCE."
-  (monitor--instance-require-option instance :trigger))
+  (monitor--instance-require-options instance '(:trigger)))
 
 (defvar monitor--hook-instances nil
   "Instances of the 'hook monitor, along with their hooks.")
@@ -426,7 +430,7 @@ If INSTANCES is NIL then remove the element at KEY entirely."
 
 (defun monitor--hook-validate (instance)
   "Validate INSTANCE."
-  (monitor--instance-require-option instance :hook))
+  (monitor--instance-require-options instance '(:hook)))
 
 (define-monitor 'expression-value 'trigger
   "Monitor expression values."
@@ -453,8 +457,7 @@ If INSTANCES is NIL then remove the element at KEY entirely."
 
 (defun monitor--expression-value-validate (instance)
   "Validate INSTANCE."
-  (monitor--instance-require-option instance :expr)
-  (monitor--instance-require-option instance :pred))
+  (monitor--instance-require-options instance '(:expr :pred)))
 
 (provide 'monitor)
 ;;; monitor.el ends here
