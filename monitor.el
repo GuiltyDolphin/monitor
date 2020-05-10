@@ -432,9 +432,9 @@ If INSTANCES is NIL then remove the element at KEY entirely."
 
 (defun monitor--expression-value-check (instance)
   "Check INSTANCE."
-  (-let* ((expr (monitor--instance-get-arg instance :expr))
-          (old (monitor--instance-get-meta instance :value))
-          (new (eval expr)))
+  (let* ((expr (monitor--instance-get-arg instance :expr))
+         (old (monitor--instance-get-meta instance :value))
+         (new (eval expr)))
     (when (monitor--expression-value-instantiated instance)
       (when (monitor--instance-run instance :pred old new)
         (monitor--instance-run instance :trigger)))
