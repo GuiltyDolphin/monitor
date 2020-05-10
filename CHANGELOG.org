@@ -10,8 +10,8 @@
 - new development files
   - =Cask=
   - =Makefile=
-    - support for =build=, =doc=, =install=, and =test=
-      recipes
+    - support for =build=, =clean=, =doc=, =install=, and
+      =test= recipes
 
 ** Changed
 

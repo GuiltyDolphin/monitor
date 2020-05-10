@@ -1,6 +1,9 @@
-.PHONY: build doc install test
+.PHONY: build clean doc install test
 
-build : install
+clean :
+	@cask clean-elc
+
+build : clean install
 	@cask build
 
 doc :
@@ -9,6 +12,6 @@ doc :
 install :
 	@cask install
 
-test :
+test : clean
 	@cask build \
 	&& cask emacs -batch -q -l tests/monitor-tests.el -f ert-run-tests-batch-and-exit
