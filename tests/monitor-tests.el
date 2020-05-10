@@ -421,7 +421,7 @@
     (unwind-protect
         (should (eq nil (symbol-value ivar)))
         (set hook-symbol nil)
-        (let* ((counter-a 0) (counter-b 0)
+        (let* ((counter-a 0)
                (instance (monitor monitor-symbol
                            :trigger (lambda () (setq counter-a (1+ counter-a)))
                            :hook hook-symbol)))
