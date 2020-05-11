@@ -8,6 +8,8 @@
 ** Added
 
 - new custom error =monitor--missing-required-option=
+- new dependencies
+  - =dash-functional= (=1.2.0=)
 - new development files
   - =Cask=
   - =Makefile=
@@ -16,8 +18,20 @@
 
 ** Changed
 
-- required =dash= version is now =2.17.0=
+- dependencies
+  - required =dash= version is now =2.17.0=
+  - required =emacs= version is now =25.1=
+- now uses =eieio= for object-orientation
+- package now uses =eieio= for object orientation
 - =tests/monitor-tests.el= now uses lexical binding
+
+** Removed
+
+- functions
+  - =monitor=
+  - =monitor-instance-create=
+  - =monitor-run-monitor-option=
+  - =monitor-run-monitor-option-with-parents=
 
 * 0.4.0 - 2020-05-09
 

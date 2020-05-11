@@ -7,7 +7,7 @@
 ;; Created: 2016-08-17
 ;; Version: 0.4.0
 ;; Keywords: lisp, monitor, utility
-;; Package-Requires: ((dash "2.17.0") (emacs "24"))
+;; Package-Requires: ((dash "2.17.0") (dash-functional "1.2.0") (emacs "25.1"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -43,421 +43,321 @@
 ;;; Code:
 
 (require 'dash)
+(require 'dash-functional)
+(require 'eieio)
+
+
+;;;;;;;;;;;;;;;;;;
+;;;;; Errors ;;;;;
+;;;;;;;;;;;;;;;;;;
+
+
+(define-error 'monitor--missing-required-option
+  "Missing required option(s)")
+
+(define-error 'monitor--does-not-inherit-base-monitor-class
+  "The class does not inherit from `monitor--base'")
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Customization ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defgroup monitor nil
   "Monitor expressions."
   :group 'lisp
   :prefix 'monitor-)
 
-(define-error 'monitor--missing-required-option
-  "Missing required option(s)")
 
-(defvar monitor--plist-attribute 'monitor-type
-  "Key used to access a monitor definition from a symbol.")
+;;;;;;;;;;;;;;;;;;;
+;;;;; Helpers ;;;;;
+;;;;;;;;;;;;;;;;;;;
 
-(defun monitor--make-plist ()
-  "Return a new 'empty' plist."
-  ; there might be a better way to do this, but I haven't figured it out yet...
-  (make-list 2 nil))
 
-(defun monitor--create-monitor-plist (parent doc &rest args)
-  "Return a plist representing an 'empty' monitor.
-See `define-monitor' for the meaning of PARENT, DOC, and ARGS."
-  `(:decl ,(or args (monitor--make-plist)) :meta (:parent ,parent :doc ,doc)))
+(defun monitor--funcall (fn &rest args)
+  "Call FN as a function with remaining ARGS, use the last arg as list of args.
 
-(defun monitor--monitor-plist-equal-p (plist-a plist-b)
-  "T if PLIST-A and PLIST-B are equal as monitor definitions.
+Thus (monitor--funcall #'fn 'a '(b c)) is the same as (funcall #'fn 'a 'b 'c).
 
-This ignores meta attributes that may vary - such as :instances."
-  (let ((meta-a (plist-get plist-a :meta))
-        (meta-b (plist-get plist-b :meta)))
-    (and (equal (plist-get meta-a :doc) (plist-get meta-b :doc))
-         (equal (plist-get meta-a :parent) (plist-get meta-b :parent))
-         (monitor--plist-equal-p (plist-get plist-a :decl) (plist-get plist-b :decl))
-         t)))
+Returns the value FN returns."
+  (funcall (-applify fn) (-concat (-drop-last 1 args) (car (-take-last 1 args)))))
 
-(defun monitor-define-monitor (name parent doc &rest args)
-  "Define a new monitor called NAME with parent PARENT.
-The first argument NAME is the symbol that will be associated with the monitor
-definition.  Each symbol may only have one associated monitor.
-The second argument PARENT is the name of the parent monitor, in almost all
-cases this should be a non-nil symbol, though NIL may be used if it is desirable
-to have no parent.
-The third argument DOC is a documentation string that should describe the purpose
-of the monitor, as well as any monitor or instance options it introduces.
+(defconst monitor--instance-prop
+  :monitor--instance
+  "Property name under which instance information is stored.
 
-Lastly, the remaining arguments ARGS should be in the form of pairs of keywords
-and values, the meaning and use of which may vary between monitors."
-  (declare (doc-string 3))
-  (when parent (unless (monitorp parent) (signal 'wrong-type-argument `(monitorp nilp ,parent))))
-  (let ((monitor-plist (apply 'monitor--create-monitor-plist parent doc args)))
-    (if (monitorp name)
-        (unless (monitor--monitor-plist-equal-p monitor-plist (monitor--plist name))
-          (monitor--remove-monitor name)
-          (put name monitor--plist-attribute monitor-plist))
-      (put name monitor--plist-attribute monitor-plist))))
+Please don't modify this value manually.")
 
-(defalias 'define-monitor 'monitor-define-monitor)
+(defun monitor--require-monitor-obj (obj)
+  "Get the monitor associated with OBJ, which must be something that satisfies `monitorp'.
 
-(defun monitor--destroy-instances (monitor)
-  "Remove all instances of MONITOR."
-  (--each (monitor--instances monitor) (monitor--instance-destroy it)))
+This fails if `obj' does not satisfy `monitorp'."
+  (cl-check-type obj monitorp)
+  (if (symbolp obj)
+      (monitor--symbol-monitor-object obj)
+    obj))
+
+(defun monitor--expand-define-args (args)
+  "Parse ARGS as a monitor definition argument list."
+  (let (class keys docstr)
+    (when (stringp (car args))
+      (setq docstr (pop args)))
+    (while (keywordp (car args))
+      (let ((k (pop args))
+            (v (pop args)))
+        (if (eq k :class)
+            (setq class v)
+          (push k keys)
+          (push v keys))))
+    (list (if (eq (car-safe class) 'quote) (cadr class) class)
+          (nreverse keys)
+          docstr
+          args)))
 
 (defun monitor--remove-monitor (monitor)
   "Remove MONITOR's definition as a monitor."
   (monitor-disable monitor)
-  (monitor--destroy-instances monitor)
-  (put monitor monitor--plist-attribute nil))
+  (put monitor monitor--instance-prop nil))
 
 (defun monitorp (monitor)
   "Return non-NIL if MONITOR is a monitor."
-  (when (and (symbolp monitor) (get monitor monitor--plist-attribute)) t))
-
-(defun monitor--plist (monitor)
-  "Get MONITOR's associated plist."
-  (unless (monitorp monitor) (signal 'wrong-type-argument `(monitorp ,monitor)))
-  (get monitor monitor--plist-attribute))
-
-(defun monitor--meta-props (monitor)
-  "Return the meta properties of MONITOR."
-  (plist-get (monitor--plist monitor) :meta))
-
-(defun monitor--meta-get (monitor prop)
-  "From MONITOR get the value of the meta property PROP."
-  (plist-get (monitor--meta-props monitor) prop))
-
-(defun monitor--meta-put (monitor prop value)
-  "Set MONITOR's meta PROP property to VALUE."
-  (plist-put (monitor--meta-props monitor) prop value))
-
-(defun monitor--parent (monitor)
-  "Return the name of the parent monitor of MONITOR (or NIL)."
-  (monitor--meta-get monitor :parent))
-
-(defun monitor--decl-props (monitor)
-  "Return the decl properties of MONITOR."
-  (plist-get (monitor--plist monitor) :decl))
-
-(defun monitor--decl-get (monitor prop)
-  "From MONITOR get the value of the decl property PROP."
-  (let ((decls (monitor--decl-props monitor)))
-    (if (plist-member decls prop)
-        (plist-get decls prop)
-      (-when-let (parent (monitor--parent monitor))
-        (monitor--decl-get parent prop)))))
-
-(defun monitor--decl-put (monitor prop value)
-  "Set MONITOR's decl PROP property to VALUE."
-  (plist-put (monitor--decl-props monitor) prop value))
+  (or (and (monitor--base--eieio-childp monitor) t)
+      (and (symbolp monitor)
+           (monitor--base--eieio-childp (monitor--symbol-monitor-object monitor))
+           t)))
 
 (defun monitor--enabled-p (monitor)
   "T if MONITOR is enabled."
-  (monitor--meta-get monitor :enabled))
+  (slot-value monitor 'enabled))
 
 (defun monitor--disabled-p (monitor)
   "T if MONITOR is disabled."
   (not (monitor--enabled-p monitor)))
 
+
+;;;;;;;;;;;;;;;;;;;
+;;;;; Classes ;;;;;
+;;;;;;;;;;;;;;;;;;;
+
+
+(defclass monitor--base ()
+  ((enabled :initform nil
+            :type booleanp
+            :documentation "Non-NIL if the monitor is currently enabled (allowed to monitor).
+
+Do not modify this value manually, instead use `monitor-enable' and `monitor-disable'."))
+  :abstract t
+  :documentation "Abstract base class for all monitors.")
+
+(defclass monitor--trigger (monitor--base)
+  ((trigger :initarg :trigger
+            :initform #'ignore
+            :type functionp
+            :documentation "Trigger run whenever the monitor is activated."))
+  :abstract t
+  :documentation "Abstract class for monitors that support instantaneous triggering.")
+
+(defclass monitor--hook (monitor--trigger)
+  ((hook :initarg :hook
+         :documentation "Hook variable to target."))
+  :documentation "Monitor for triggering on hooks.")
+
+(defclass monitor--expression-value (monitor--trigger)
+  ((expr :initarg :expr
+         :documentation "Expression to monitor. It's probably best to keep this free of side-effects.")
+   (pred :initarg :pred
+         :type functionp
+         :documentation "Function used to compare the previous and current vaue of the expression.
+
+The function is passed the old and new values and arguments, and should return non-NIL if the monitor should trigger.")
+   (value :documentation "Last known value of `:expr' (don't set this manually)."))
+  :documentation "Monitor the value of expressions.")
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Class methods ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Enabling and disabling ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(cl-defgeneric monitor--enable (obj)
+  "Enable monitoring with OBJ.
+
+Note that you should only use this when implementing the method behaviour via `cl-defmethod', if you actually want to enable the monitor, use `monitor-enable' instead.")
+
+(cl-defgeneric monitor--disable (obj)
+  "Disable monitoring with OBJ.
+
+Note that you should only use this when implementing the method behaviour via `cl-defmethod', if you actually want to disable the monitor, use `monitor-disable' instead.")
+
 (defun monitor-enable (monitor)
   "Enable MONITOR."
-  (unless (monitor--enabled-p monitor)
-    (monitor-run-monitor-option monitor :enable monitor)
-    (monitor--meta-put monitor :enabled t)))
+  (let ((m (monitor--require-monitor-obj monitor)))
+    (unless (monitor--enabled-p m) (monitor--enable m))))
 
 (defun monitor-disable (monitor)
   "Disable MONITOR."
-  (unless (monitor--disabled-p monitor)
-    (monitor-run-monitor-option monitor :disable monitor)
-    (monitor--meta-put monitor :enabled nil)))
+  (let ((m (monitor--require-monitor-obj monitor)))
+    (unless (monitor--disabled-p m) (monitor--disable m))))
 
-(defun monitor-run-monitor-option (monitor prop &rest args)
-  "Run MONITOR's PROP option with ARGS as arguments.
 
-Don't do anything if the option is not a function."
-  (let ((f (monitor--decl-get monitor prop)))
-    (apply 'monitor--fn-run f args)))
+;;; Base
 
-(defun monitor--has-option-p (monitor prop)
-  "T if MONITOR provides the PROP option."
-  (plist-member (monitor--decl-props monitor) prop))
 
-(defun monitor-run-monitor-option-with-parents (monitor prop &rest args)
-  "Run MONITOR's PROP option with ARGS as arguments.
+(cl-defmethod monitor--enable :after ((obj monitor--base))
+  (oset obj enabled t))
 
-Do the same for each parent in MONITOR's heirarchy."
-  (list (when (monitor--has-option-p monitor prop)
-          (apply 'monitor-run-monitor-option monitor prop args))
-        (when (monitor--parent monitor)
-          (apply 'monitor-run-monitor-option-with-parents (monitor--parent monitor) prop args))))
+(cl-defmethod monitor--disable :after ((obj monitor--base))
+  (oset obj enabled nil))
 
-(defun monitor--instances (monitor)
-  "Return existing instances of MONITOR."
-  (monitor--meta-get monitor :instances))
 
-(defun monitor--instance-existing-p (instance)
-  "T if INSTANCE is equal to an existing instance."
-  (let ((instances (monitor--instances (monitor--instance-monitor instance))))
-    (let ((-compare-fn 'monitor--instance-equal)) (-contains-p instances instance))))
+;;; Hook
 
-(defun monitor--instance-has-option-p (instance prop)
-  "T if INSTANCE provides the PROP option."
-  (plist-member (monitor--instance-args instance) prop))
 
-(defun monitor--instance-require-options (instance props)
-  "Check that INSTANCE provides each option in PROPS, fail otherwise."
+(defun monitor--hook-build-hook-fn (obj)
+  "Build a form suitable for adding to a hook for OBJ."
+  (lambda () (monitor--trigger--trigger obj)))
+
+(cl-defmethod monitor--enable ((obj monitor--hook))
+  (add-hook (oref obj hook) (monitor--hook-build-hook-fn obj)))
+
+(cl-defmethod monitor--disable ((obj monitor--hook))
+  (remove-hook (oref obj hook) (monitor--hook-build-hook-fn obj))
+  (oset obj enabled nil))
+
+
+;;; Expression-value
+
+
+(cl-defmethod monitor--enable ((obj monitor--expression-value))
+  (oset obj value (eval (oref obj expr))))
+
+(cl-defmethod monitor--disable ((obj monitor--expression-value))
+  (slot-makeunbound obj 'value))
+
+
+;;;;;;;;;;;;;;;;
+;; Validation ;;
+;;;;;;;;;;;;;;;;
+
+
+(cl-defgeneric monitor--validate (obj)
+  "Validate the monitor OBJ, for initialization.
+
+This method is called when an instance is created with `monitor-define-monitor', so
+it's a good place to put any validation (e.g., checking for missing options) you want
+to apply to all new instances.")
+
+(defun monitor--validate-required-options (obj props)
+  "Check that OBJ provides each option in PROPS, fail otherwise."
   (let ((missing-opts))
     (dolist (prop props)
-      (unless (monitor--instance-has-option-p instance prop)
+      (unless (slot-boundp obj prop)
         (push prop missing-opts)))
     (unless (null missing-opts)
       (signal 'monitor--missing-required-option (nreverse missing-opts)))))
 
-(defun monitor-instance-create (monitor &rest args)
-  "Define a new monitor instance.
-MONITOR is the monitor to watch.
-ARGS is a list of (usually key-value) arguments that define the instance.
 
-The keys that have an effect in ARGS varies between monitors, see the
-documentation for MONITOR (and its parents) for which keys are applicable."
-  (declare (indent 1))
-  (let ((instance `(:args (:monitor ,monitor ,@args) :meta ,(monitor--make-plist))))
-    (unless (monitor--instance-existing-p instance)
-      (monitor-run-monitor-option-with-parents monitor :validate instance)
-      (monitor-run-monitor-option monitor :create instance)
-      (let ((instances (monitor--instances monitor)))
-        (monitor--meta-put monitor :instances (cons instance instances))))
-      instance))
+;;; Base
 
-(defalias 'monitor 'monitor-instance-create)
 
-(defun monitor--instance-destroy (instance)
-  "Destroy INSTANCE."
-  (when (monitor--instance-existing-p instance)
-    (let ((monitor (monitor--instance-monitor instance)))
-      (monitor-run-monitor-option monitor :destroy instance)
-      (let ((instances (monitor--instances monitor)))
-        (monitor--meta-put monitor :instances (--reject (monitor--instance-equal it instance) instances))))))
+(cl-defmethod monitor--validate ((_ monitor--base))
+  "No validation for base monitor.")
 
-(defun monitor--instance-p (instance)
-  "T if INSTANCE is a monitor instance."
-  (when (and (listp instance) (monitorp (plist-get (plist-get instance :args) :monitor))) t))
 
-(defun monitor--instance-args (instance)
-  "Return the arguments used in the creation of INSTANCE."
-  (unless (monitor--instance-p instance) (signal 'wrong-type-argument `(monitor-instance-p ,instance)))
-  (plist-get instance :args))
+;;; Hook
 
-(defun monitor--instance-monitor (instance)
-  "Return the monitor used in the creation of INSTANCE."
-  (unless (monitor--instance-p instance) (signal 'wrong-type-argument `(monitor-instance-p ,instance)))
-  (plist-get (monitor--instance-args instance) :monitor))
 
-(defun monitor--plist-equal-p (plist-a plist-b)
-  "T if PLIST-A and PLIST-B have equal key-values."
-  (let ((keys-a (-sort 'string-lessp (-filter 'keywordp plist-a)))
-        (keys-b (-sort 'string-lessp (-filter 'keywordp plist-b))))
-    (and (equal keys-a keys-b)
-         (--all-p (equal (plist-get plist-a it) (plist-get plist-b it)) keys-a))))
+(cl-defmethod monitor--validate ((obj monitor--hook))
+  "We require the :hook argument to be bound."
+  (monitor--validate-required-options obj '(:hook)))
 
-(defun monitor--instance-equal (instance-a instance-b)
-  "T if INSTANCE-A is equal (as a monitor instance) to INSTANCE-B."
-  (let* ((args-a (monitor--instance-args instance-a))
-         (args-b (monitor--instance-args instance-b)))
-    (and (equal (monitor--instance-monitor instance-a) (monitor--instance-monitor instance-b))
-         (monitor--plist-equal-p args-a args-b))))
 
-(defun monitor--instance-get-arg (instance prop)
-  "Return the value of INSTANCE's PROP property."
-  (let ((args (monitor--instance-args instance)))
-    (plist-get args prop)))
+;;; Expression-value
 
-(defun monitor--instance-get (instance prop)
-  "Return the value of INSTANCE's PROP property.
 
-If INSTANCE does not provide PROP, use the associated monitor's."
-  (let ((args (monitor--instance-args instance)))
-    (if (plist-member args prop) (plist-get args prop)
-      (monitor--decl-get (monitor--instance-monitor instance) prop))))
+(cl-defmethod monitor--validate ((obj monitor--expression-value))
+  "We require the :expr argument to be bound."
+  (monitor--validate-required-options obj '(:expr :pred)))
 
-(defun monitor--instance-meta-plist (instance)
-  "Return INSTANCE's meta property list."
-  (plist-get instance :meta))
+(defun monitor--symbol-monitor-object (symbol)
+  "Get the monitor object associated with the symbol SYMBOL."
+  (get symbol monitor--instance-prop))
 
-(defun monitor--instance-get-meta (instance prop)
-  "Return the value of INSTANCE's PROP meta property."
-  (let ((plist (monitor--instance-meta-plist instance)))
-    (plist-get plist prop)))
 
-(defun monitor--instance-put-meta (instance prop value)
-  "Set the value of INSTANCE's meta property PROP to VALUE."
-  (let ((plist (monitor--instance-meta-plist instance)))
-    (plist-put plist prop value)))
+;;;;;;;;;;;;;;;;
+;; Triggering ;;
+;;;;;;;;;;;;;;;;
 
-(defun monitor--instance-run (instance prop &rest args)
-  "Run INSTANCE's PROP function with ARGS as arguments.
 
-Will not error if PROP does not represent a valid function."
-  (let ((f (monitor--instance-get-arg instance prop)))
-    (apply 'monitor--fn-run f args)))
+(cl-defgeneric monitor--trigger--trigger (obj)
+  "This method determines how to handle triggering a monitor, i.e., the moment the monitor becomes instantaneously active.")
 
-(defun monitor--function-or-function-list-p (object)
-  "Return T if OBJECT is a function or a list of functions."
-  (or (functionp object) (and (listp object) (-all-p 'functionp object))))
 
-(defun monitor--fn-run (fn &rest args)
-  "Run FN with ARGS as arguments and return the result.
+;;; Trigger
 
-If FN is a list of functions, then run each element with ARGS as arguments and
-return a list of the results."
-  (unless (monitor--function-or-function-list-p fn)
-    (signal 'wrong-type-argument `(monitor--function-or-function-list-p ,fn)))
-  (if (functionp fn) (apply fn args)
-    (--map (apply it args) fn)))
+(cl-defmethod monitor--trigger--trigger ((obj monitor--trigger) &rest args)
+  "Run the :trigger function of OBJ with ARGS as arguments."
+  (monitor--funcall (oref obj trigger) args))
 
-;;;; Monitors
 
-;;; Instance lists
+;;; Expression-value
 
-(defun monitor--instance-list-add-instance (list instance)
-  "Add to LIST the instance INSTANCE if it is not already present."
-  (if (let ((-compare-fn 'monitor--instance-equal))
-        (-contains-p list instance)) list (push instance list)))
 
-(defun monitor--instance-list-remove-instance (list instance)
-  "Remove from LIST the monitor instance INSTANCE."
-  (--reject (monitor--instance-equal it instance) list))
-
-;;; Instance alists
-
-(defun monitor--instance-alist-instances (alist key)
-  "Return the instances in ALIST associated with KEY."
-  (cdr (assoc key alist)))
-
-(defun monitor--instance-alist-keys (alist)
-  "Return the keys of ALIST."
-  (-map 'car alist))
-
-(defun monitor--instance-alist-update-instances (alist key instances)
-  "Replace the instances in ALIST at KEY with INSTANCES.
-
-Add a new element to ALIST if there isn't already one with key KEY.
-If INSTANCES is NIL then remove the element at KEY entirely."
-  (let ((existing (assoc key alist)))
-    (if instances
-        (if existing (setf (cdr existing) instances)
-          (push (cons key instances) alist))
-      (setq alist (--reject (equal (car it) key) alist)))
-    alist))
-
-(defun monitor--instance-alist-add-instance (alist key instance)
-  "In ALIST add at KEY the instance INSTANCE if it is not already present."
-  (let ((instances (monitor--instance-alist-instances alist key)))
-    (monitor--instance-alist-update-instances
-     alist key (monitor--instance-list-add-instance instances instance))))
-
-(defun monitor--instance-alist-remove-instance (alist key instance)
-  "Remove from ALIST at KEY the instance INSTANCE if it is present."
-  (monitor--instance-alist-update-instances alist key
-                                            (--reject (monitor--instance-equal it instance)
-                                                      (monitor--instance-alist-instances alist key))))
-
-(define-monitor 'base nil
-  "Base monitor which should be used as the parent for new, sparse monitors."
-  :enable nil
-  :disable nil)
-
-(define-monitor 'trigger 'base
-  "Monitor that supports instantaneous triggering."
-  :trigger 'monitor--trigger-trigger
-  :validate 'monitor--trigger-validate)
-
-(defun monitor--trigger-trigger (instance &rest args)
-  "Run the :trigger function of INSTANCE with ARGS as arguments."
-  (apply 'monitor--instance-run instance :trigger args))
-
-(defun monitor--trigger-validate (instance)
-  "Validate INSTANCE."
-  (monitor--instance-require-options instance '(:trigger)))
-
-(defvar monitor--hook-instances nil
-  "Instances of the 'hook monitor, along with their hooks.")
-
-(define-monitor 'hook 'trigger
-  "Monitor for triggering on hooks."
-  :enable 'monitor--hook-enable
-  :disable 'monitor--hook-disable
-  :create 'monitor--hook-create
-  :destroy 'monitor--hook-destroy
-  :validate 'monitor--hook-validate
-  :hook-ivar 'monitor--hook-instances)
-
-(defun monitor--hook-ivar (monitor)
-  "Retrieve the hook-ivar from MONITOR."
-  (symbol-value (monitor--decl-get monitor :hook-ivar)))
-
-(defun monitor--hook-run-instances (monitor hook)
-  "Run MONITOR's instances for HOOK."
-  (--each (monitor--instance-alist-instances (monitor--hook-ivar monitor) hook)
-    (monitor-run-monitor-option monitor :trigger it)))
-
-(defun monitor--hook-runner-fn (monitor hook)
-  "Return a function for running MONITOR's HOOK associated instances."
-  (lambda () (monitor--hook-run-instances monitor hook)))
-
-(defun monitor--hook-enable (monitor)
-  "Enable MONITOR."
-  (--each (monitor--instance-alist-keys (monitor--hook-ivar monitor))
-    (add-hook it (monitor--hook-runner-fn monitor it))))
-
-(defun monitor--hook-disable (monitor)
-  "Disable MONITOR."
-  (--each (monitor--instance-alist-keys (monitor--hook-ivar monitor))
-    (remove-hook it (monitor--hook-runner-fn monitor it))))
-
-(defun monitor--hook-create (instance)
-  "Create INSTANCE."
-  (set (monitor--decl-get (monitor--instance-monitor instance) :hook-ivar)
-        (monitor--instance-alist-add-instance (monitor--hook-ivar (monitor--instance-monitor instance))
-                                              (monitor--instance-get-arg instance :hook)
-                                              instance)))
-
-(defun monitor--hook-destroy (instance)
-  "Destroy INSTANCE."
-  (set (monitor--decl-get (monitor--instance-monitor instance) :hook-ivar)
-        (monitor--instance-alist-remove-instance (monitor--hook-ivar (monitor--instance-monitor instance))
-                                                 (monitor--instance-get-arg instance :hook)
-                                                 instance)))
-
-(defun monitor--hook-validate (instance)
-  "Validate INSTANCE."
-  (monitor--instance-require-options instance '(:hook)))
-
-(define-monitor 'expression-value 'trigger
-  "Monitor expression values."
-  :check 'monitor--expression-value-check
-  :validate 'monitor--expression-value-validate)
-
-(defun monitor--expression-value-check (instance)
-  "Check INSTANCE."
-  (let* ((expr (monitor--instance-get-arg instance :expr))
-         (old (monitor--instance-get-meta instance :value))
+(cl-defmethod monitor--trigger--trigger ((obj monitor--expression-value))
+  "Similar to the trigger for `monitor--trigger', but the trigger will only run
+if `:pred' returns non-NIL when passed the new and old values of `:expr'."
+  (let* ((expr (oref obj expr))
+         (old (oref obj value))
          (new (eval expr)))
-    (when (monitor--expression-value-instantiated instance)
-      (when (monitor--instance-run instance :pred old new)
-        (monitor--instance-run instance :trigger)))
-  (monitor--expression-value-update-value instance new)))
+    (when (funcall (oref obj pred) old new)
+      (oset obj value new)
+      (cl-call-next-method))))
 
-(defun monitor--expression-value-update-value (instance value)
-  "Update INSTANCE's known (tracked) value to VALUE."
-  (monitor--instance-put-meta instance :value value))
 
-(defun monitor--expression-value-instantiated (instance)
-  "T if an expression check has already been performed for INSTANCE."
-  (plist-member (monitor--instance-meta-plist instance) :value))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Creating monitors ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun monitor--expression-value-validate (instance)
-  "Validate INSTANCE."
-  (monitor--instance-require-options instance '(:expr :pred)))
+
+(defmacro monitor-define-monitor (name arglist &rest args)
+  "Define NAME as a monitor.
+
+ARGLIST is currently ignored, but may be used in future.
+DOCSTRING is the documentation string and is optional.
+
+These arguments can optionally be followed by key-value pairs.
+Each key has to be a keyword symbol, either `:class' or a keyword
+argument supported by the constructor of that class. It is an error
+not to specify a class.
+
+\(fn NAME ARGLIST [DOCSTRING] [KEYWORD VALUE]...)"
+  (declare (debug (&define name lambda-list
+                           [&optional lambda-doc]
+                           [&rest keywordp sexp]))
+           (doc-string 3)
+           (indent defun))
+  (ignore arglist) ; to prevent warning about unused ARGLIST
+  (let ((obj (make-symbol "obj")))
+    (pcase-let ((`(,class ,slots ,docstr _)
+                 (monitor--expand-define-args args)))
+      (when (null class)
+        (error "You must specify a non-NIL value for `:class'"))
+      (unless (child-of-class-p class 'monitor--base)
+        (signal 'monitor--does-not-inherit-base-monitor-class class))
+      `(progn
+         (let ((,obj (,class ,@slots)))
+           (monitor--validate ,obj)
+           (put ',name 'function-documentation ,docstr)
+           (put ',name ,monitor--instance-prop ,obj))))))
+
+(defalias 'define-monitor 'monitor-define-monitor)
+
 
 (provide 'monitor)
 ;;; monitor.el ends here
