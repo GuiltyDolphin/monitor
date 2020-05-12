@@ -120,6 +120,10 @@ This fails if `obj' does not satisfy `monitorp'."
   (monitor-disable monitor)
   (put monitor monitor--instance-prop nil))
 
+(defun monitor--symbol-monitor-object (symbol)
+  "Get the monitor object associated with the symbol SYMBOL."
+  (get symbol monitor--instance-prop))
+
 (defun monitorp (monitor)
   "Return non-NIL if MONITOR is a monitor."
   (or (and (monitor--base--eieio-childp monitor) t)
@@ -163,7 +167,14 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
          :documentation "Hook variable to target."))
   :documentation "Monitor for triggering on hooks.")
 
-(defclass monitor--expression-value (monitor--trigger)
+(defclass monitor--guarded (monitor--trigger)
+  ((pred :initarg :pred
+         :type functionp
+         :documentation "Predicate that determines whether the monitor should trigger."))
+  :abstract t
+  :documentation "Abstract class for monitors which can only trigger when a predicate is satisfied.")
+
+(defclass monitor--expression-value (monitor--guarded)
   ((expr :initarg :expr
          :documentation "Expression to monitor. It's probably best to keep this free of side-effects.")
    (pred :initarg :pred
@@ -172,7 +183,8 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
 
 The function is passed the old and new values and arguments, and should return non-NIL if the monitor should trigger.")
    (value :documentation "Last known value of `:expr' (don't set this manually)."))
-  :documentation "Monitor the value of expressions.")
+  :abstract t
+  :documentation "Abstract class for monitors which should only trigger if an expression has reached a desired state since the last tick.")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -234,24 +246,29 @@ Note that you should only use this when implementing the method behaviour via `c
 ;;; Expression-value
 
 
-(cl-defmethod monitor--enable ((obj monitor--expression-value))
+(cl-defmethod monitor--enable :before ((obj monitor--expression-value))
   (oset obj value (eval (oref obj expr))))
 
-(cl-defmethod monitor--disable ((obj monitor--expression-value))
+(cl-defmethod monitor--disable :before ((obj monitor--expression-value))
   (slot-makeunbound obj 'value))
 
 
-;;;;;;;;;;;;;;;;
-;; Validation ;;
-;;;;;;;;;;;;;;;;
+;;;;;;;;;;;
+;; Setup ;;
+;;;;;;;;;;;
 
 
-(cl-defgeneric monitor--validate (obj)
-  "Validate the monitor OBJ, for initialization.
+(cl-defgeneric monitor--setup (obj)
+  "Initialize the monitor object OBJ.
 
-This method is called when an instance is created with `monitor-define-monitor', so
-it's a good place to put any validation (e.g., checking for missing options) you want
-to apply to all new instances.")
+This method is called when an instance is created with
+`monitor-define-monitor', so it's a good place to put any
+validation (e.g., checking for missing options) and
+initialization you want to apply to all new instances.
+
+You should usually either combine this method with `:before' or
+`:after' (see `cl-defmethod'), or call `cl-call-next-method' in
+the body.")
 
 (defun monitor--validate-required-options (obj props)
   "Check that OBJ provides each option in PROPS, fail otherwise."
@@ -266,28 +283,41 @@ to apply to all new instances.")
 ;;; Base
 
 
-(cl-defmethod monitor--validate ((_ monitor--base))
-  "No validation for base monitor.")
+(cl-defmethod monitor--setup ((_ monitor--base))
+  "No additional setup required for base monitor.")
 
 
 ;;; Hook
 
 
-(cl-defmethod monitor--validate ((obj monitor--hook))
+(cl-defmethod monitor--setup :after ((obj monitor--hook))
   "We require the :hook argument to be bound."
   (monitor--validate-required-options obj '(:hook)))
+
+
+;;; Guarded
+
+
+(cl-defmethod monitor--setup :after ((obj monitor--guarded))
+  "We require the :pred option to be bound."
+  (monitor--validate-required-options obj '(:pred)))
 
 
 ;;; Expression-value
 
 
-(cl-defmethod monitor--validate ((obj monitor--expression-value))
-  "We require the :expr argument to be bound."
-  (monitor--validate-required-options obj '(:expr :pred)))
-
-(defun monitor--symbol-monitor-object (symbol)
-  "Get the monitor object associated with the symbol SYMBOL."
-  (get symbol monitor--instance-prop))
+(cl-defmethod monitor--setup ((obj monitor--expression-value))
+  "We require the `:expr' and `:pred' arguments to be bound."
+  (monitor--validate-required-options obj '(:expr :pred))
+  (let* ((pred-old (oref obj pred))
+         (pred-new (lambda (obj)
+                     (let* ((expr (oref obj expr))
+                            (old (oref obj value))
+                            (new (eval expr)))
+                       (when (funcall pred-old old new) (oset obj value new) t)))))
+    ;; we wrap up the old predicate with a new predicate that tracks the expression value
+    (oset obj pred pred-new))
+  (cl-call-next-method))
 
 
 ;;;;;;;;;;;;;;;;
@@ -301,23 +331,21 @@ to apply to all new instances.")
 
 ;;; Trigger
 
+
 (cl-defmethod monitor--trigger--trigger ((obj monitor--trigger) &rest args)
-  "Run the :trigger function of OBJ with ARGS as arguments."
+  "Run the `:trigger' function of OBJ with ARGS as arguments."
   (monitor--funcall (oref obj trigger) args))
 
 
-;;; Expression-value
+;;; Guarded
 
 
-(cl-defmethod monitor--trigger--trigger ((obj monitor--expression-value))
-  "Similar to the trigger for `monitor--trigger', but the trigger will only run
-if `:pred' returns non-NIL when passed the new and old values of `:expr'."
-  (let* ((expr (oref obj expr))
-         (old (oref obj value))
-         (new (eval expr)))
-    (when (funcall (oref obj pred) old new)
-      (oset obj value new)
-      (cl-call-next-method))))
+(cl-defmethod monitor--trigger--trigger :around ((obj monitor--guarded) &rest args)
+  "Triggering is guarded by a predicate (`:pred').
+
+The monitor will only trigger if this predicate returns non-NIL when passed OBJ."
+  (when (funcall (oref obj pred) obj)
+    (apply #'cl-call-next-method args)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -352,7 +380,7 @@ not to specify a class.
         (signal 'monitor--does-not-inherit-base-monitor-class class))
       `(progn
          (let ((,obj (,class ,@slots)))
-           (monitor--validate ,obj)
+           (monitor--setup ,obj)
            (put ',name 'function-documentation ,docstr)
            (put ',name ,monitor--instance-prop ,obj))))))
 

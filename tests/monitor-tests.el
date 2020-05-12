@@ -36,6 +36,13 @@
 
 (cl-defmethod monitor--enable ((_ monitor-test--enable-disable-monitor-child)))
 
+(defclass monitor-test--expression-value (monitor--expression-value)
+  (()))
+
+(cl-defmethod monitor--disable ((_ monitor-test--expression-value)))
+
+(cl-defmethod monitor--enable ((_ monitor-test--expression-value)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Test helpers ;;;;;
@@ -213,11 +220,11 @@ This is a simple wrapper around `monitor-define-monitor'.
 
     ;; the :expr and :pred options are required
     (monitor-test--should-error-missing-options (:expr :pred)
-      (monitor-test--define-monitor monitor-symbol 'monitor--expression-value))
+      (monitor-test--define-monitor monitor-symbol 'monitor-test--expression-value))
 
     (unwind-protect
         (let* ((instance (eval `(monitor-define-monitor ,monitor-symbol ()
-                                  :class 'monitor--expression-value
+                                  :class 'monitor-test--expression-value
                                   :trigger (lambda () (setq ,counter-a (1+ ,counter-a)))
                                   :expr ',counter-b
                                   :pred (lambda (old new) (> new old))))))
