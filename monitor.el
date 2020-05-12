@@ -158,7 +158,12 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
   ((trigger :initarg :trigger
             :initform #'ignore
             :type functionp
-            :documentation "Trigger run whenever the monitor is activated."))
+            :documentation "Trigger run whenever the monitor is activated.")
+   (trigger-pred
+    :initarg :trigger-pred
+    :type functionp
+    :initform (-const t)
+    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects."))
   :abstract t
   :documentation "Abstract class for monitors that support instantaneous triggering.")
 
@@ -167,14 +172,7 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
          :documentation "Hook variable to target."))
   :documentation "Monitor for triggering on hooks.")
 
-(defclass monitor--guarded (monitor--trigger)
-  ((pred :initarg :pred
-         :type functionp
-         :documentation "Predicate that determines whether the monitor should trigger."))
-  :abstract t
-  :documentation "Abstract class for monitors which can only trigger when a predicate is satisfied.")
-
-(defclass monitor--expression-value (monitor--guarded)
+(defclass monitor--expression-value (monitor--trigger)
   ((expr :initarg :expr
          :documentation "Expression to monitor. It's probably best to keep this free of side-effects.")
    (pred :initarg :pred
@@ -295,28 +293,19 @@ the body.")
   (monitor--validate-required-options obj '(:hook)))
 
 
-;;; Guarded
-
-
-(cl-defmethod monitor--setup :after ((obj monitor--guarded))
-  "We require the :pred option to be bound."
-  (monitor--validate-required-options obj '(:pred)))
-
-
 ;;; Expression-value
 
 
 (cl-defmethod monitor--setup ((obj monitor--expression-value))
   "We require the `:expr' and `:pred' arguments to be bound."
   (monitor--validate-required-options obj '(:expr :pred))
-  (let* ((pred-old (oref obj pred))
-         (pred-new (lambda (obj)
+  (let* ((pred-new (lambda (obj)
                      (let* ((expr (oref obj expr))
                             (old (oref obj value))
                             (new (eval expr)))
-                       (when (funcall pred-old old new) (oset obj value new) t)))))
+                       (when (funcall (oref obj pred) old new) (oset obj value new) t)))))
     ;; we wrap up the old predicate with a new predicate that tracks the expression value
-    (oset obj pred pred-new))
+    (oset obj trigger-pred (-andfn (oref obj trigger-pred) pred-new)))
   (cl-call-next-method))
 
 
@@ -333,19 +322,11 @@ the body.")
 
 
 (cl-defmethod monitor--trigger--trigger ((obj monitor--trigger) &rest args)
-  "Run the `:trigger' function of OBJ with ARGS as arguments."
-  (monitor--funcall (oref obj trigger) args))
+  "Run the `:trigger' function of OBJ with ARGS as arguments.
 
-
-;;; Guarded
-
-
-(cl-defmethod monitor--trigger--trigger :around ((obj monitor--guarded) &rest args)
-  "Triggering is guarded by a predicate (`:pred').
-
-The monitor will only trigger if this predicate returns non-NIL when passed OBJ."
-  (when (funcall (oref obj pred) obj)
-    (apply #'cl-call-next-method args)))
+The monitor will only trigger if the predicate in `:trigger-pred' returns non-NIL when passed OBJ."
+  (when (funcall (oref obj trigger-pred) obj)
+    (monitor--funcall (oref obj trigger) args)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
