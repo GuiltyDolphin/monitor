@@ -416,7 +416,7 @@ The monitor will only trigger if the predicate in `:trigger-pred' returns non-NI
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmacro monitor-create (arglist &rest args)
+(defun monitor-create (arglist &rest args)
   "Create a new monitor.
 
 ARGLIST is currently ignored, but may be used in future.
@@ -428,10 +428,7 @@ argument supported by the constructor of that class.  If no class
 is specified, it defaults to `monitor--monitor'.
 
 \(fn ARGLIST [DOCSTRING] [KEYWORD VALUE]...)"
-  (declare (debug (&define lambda-list
-                           [&optional lambda-doc]
-                           [&rest keywordp sexp]))
-           (doc-string 2)
+  (declare (doc-string 2)
            (indent defun))
   (ignore arglist) ; to prevent warning about unused ARGLIST
   (pcase-let* ((`(,class ,slots ,docstr _)
@@ -439,11 +436,9 @@ is specified, it defaults to `monitor--monitor'.
                (class (or class 'monitor--monitor)))
     (unless (child-of-class-p class 'monitor--monitor)
       (signal 'monitor--does-not-inherit-base-monitor-class class))
-    (let ((obj (make-symbol "obj")))
-      `(progn
-         (let ((,obj (,class ,@slots)))
-           (monitor--setup ,obj)
-           ,obj)))))
+    (let ((obj (monitor--funcall class slots)))
+      (monitor--setup obj)
+      obj)))
 
 
 (defmacro monitor-define-monitor (name arglist &rest args)

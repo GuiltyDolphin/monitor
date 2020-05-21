@@ -19,7 +19,7 @@ information on how to use monitor.
   - =Makefile=
     - support for =build=, =clean=, =doc=, =install=, and
       =test= recipes
-- new macro =monitor-create= for creating monitors without
+- new function =monitor-create= for creating monitors without
   assigning their value to a symbol
 
 ** Changed
