@@ -223,38 +223,37 @@ This is a simple wrapper around `monitor-define-monitor'.
     (monitor-test--should-error-missing-options (:expr :pred)
       (monitor-test--define-monitor monitor-symbol :trigger-on [(monitor-test--expression-value-listener)]))
 
-    (unwind-protect
-        (let* ((instance (eval `(monitor-define-monitor ,monitor-symbol ()
-                                  :trigger-on [(monitor-test--expression-value-listener
-                                                :expr ,counter-b
-                                                :pred (lambda (old new) (> new old)))]
-                                  :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))
-          (monitor-enable monitor-symbol)
+    (let* ((instance (eval `(monitor-define-monitor ,monitor-symbol ()
+                              :trigger-on [(monitor-test--expression-value-listener
+                                            :expr ,counter-b
+                                            :pred (lambda (old new) (> new old)))]
+                              :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))
+      (monitor-enable monitor-symbol)
 
-          ;; enabled
-          (should (eq t (monitor--enabled-p instance)))
+      ;; enabled
+      (should (eq t (monitor--enabled-p instance)))
 
-          ;; value not yet checked
-          (should (= 0 (symbol-value counter-a)))
+      ;; value not yet checked
+      (should (= 0 (symbol-value counter-a)))
 
-          (monitor--trigger--trigger instance)
+      (monitor--trigger--trigger instance)
 
-          ;; value checked, but same
-          (should (= 0 (symbol-value counter-a)))
+      ;; value checked, but same
+      (should (= 0 (symbol-value counter-a)))
 
-          (set counter-b (1+ (symbol-value counter-b)))
+      (set counter-b (1+ (symbol-value counter-b)))
 
-          ;; should trigger (value increased)
-          (monitor--trigger--trigger instance)
-          (should (= 1 (symbol-value counter-a)))
+      ;; should trigger (value increased)
+      (monitor--trigger--trigger instance)
+      (should (= 1 (symbol-value counter-a)))
 
-          (monitor-disable monitor-symbol)
+      (monitor-disable monitor-symbol)
 
-          ;; disabled
-          (should (eq nil (monitor--enabled-p instance)))
+      ;; disabled
+      (should (eq nil (monitor--enabled-p instance)))
 
-          ;; cannot trigger when disabled
-          (should-error (monitor--trigger--trigger instance))))))
+      ;; cannot trigger when disabled
+      (should-error (monitor--trigger--trigger instance)))))
 
 
 (provide 'monitor-tests)
