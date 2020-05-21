@@ -155,7 +155,8 @@ This fails if `obj' does not satisfy `monitorp'."
      (let* ((lclass (monitor--get-listener-class-for-alias (car spec)))
             (args (cdr spec))
             (listener (apply lclass args)))
-       (monitor--setup listener monitor)
+       (oset listener monitor monitor)
+       (monitor--setup listener)
        listener)) listener-spec))
 
 (defun monitor--get-listener-class-for-alias (alias)
@@ -183,7 +184,9 @@ You need to do this if you want to use CLASS in `define-monitor' listener specif
             :type booleanp
             :documentation "Non-NIL if the listener is currently enabled (allowed to listen).
 
-Do not modify this value manually, instead use `monitor-enable' and `monitor-disable' on the parent monitor."))
+Do not modify this value manually, instead use `monitor-enable' and `monitor-disable' on the parent monitor.")
+   (monitor :type monitorp
+            :documentation "The monitor associated with this listener. Do not modify this value manually."))
   :abstract t
   :documentation "Abstract base class for all listeners.")
 
@@ -274,20 +277,20 @@ Note that you should only use this when implementing the method behaviour via `c
 
 (cl-defmethod monitor--enable ((obj monitor--monitor))
   (dolist (listener (oref obj listeners))
-    (monitor--enable listener obj)))
+    (monitor--enable listener)))
 
 (cl-defmethod monitor--disable ((obj monitor--monitor))
   (dolist (listener (oref obj listeners))
-    (monitor--disable listener obj)))
+    (monitor--disable listener)))
 
 
 ;;; Listener (listener)
 
 
-(cl-defmethod monitor--enable :after ((obj monitor--listener) _)
+(cl-defmethod monitor--enable :after ((obj monitor--listener))
   (oset obj enabled t))
 
-(cl-defmethod monitor--disable :after ((obj monitor--listener) _)
+(cl-defmethod monitor--disable :after ((obj monitor--listener))
   (oset obj enabled nil))
 
 
@@ -298,20 +301,20 @@ Note that you should only use this when implementing the method behaviour via `c
   "Build a form suitable for adding to a hook for the MONITOR."
   (lambda () (monitor--trigger--trigger monitor)))
 
-(cl-defmethod monitor--enable ((obj monitor--hook-listener) monitor)
-  (add-hook (oref obj hook) (monitor--hook-build-hook-fn monitor)))
+(cl-defmethod monitor--enable ((obj monitor--hook-listener))
+  (add-hook (oref obj hook) (monitor--hook-build-hook-fn (oref obj monitor))))
 
-(cl-defmethod monitor--disable ((obj monitor--hook-listener) monitor)
-  (remove-hook (oref obj hook) (monitor--hook-build-hook-fn monitor)))
+(cl-defmethod monitor--disable ((obj monitor--hook-listener))
+  (remove-hook (oref obj hook) (monitor--hook-build-hook-fn (oref obj monitor))))
 
 
 ;;; Expression-value (listener)
 
 
-(cl-defmethod monitor--enable :before ((obj monitor--expression-value-listener) _)
+(cl-defmethod monitor--enable :before ((obj monitor--expression-value-listener))
   (oset obj value (eval (oref obj expr))))
 
-(cl-defmethod monitor--disable :before ((obj monitor--expression-value-listener) _)
+(cl-defmethod monitor--disable :before ((obj monitor--expression-value-listener))
   (slot-makeunbound obj 'value))
 
 
@@ -354,14 +357,14 @@ the body.")
 ;;; Listener (listener)
 
 
-(cl-defmethod monitor--setup ((_ monitor--listener) __)
+(cl-defmethod monitor--setup ((_ monitor--listener))
   "No additional setup required for base listener.")
 
 
 ;;; Hook (listener)
 
 
-(cl-defmethod monitor--setup :after ((obj monitor--hook-listener) _)
+(cl-defmethod monitor--setup :after ((obj monitor--hook-listener))
   "We require the :hook argument to be bound."
   (monitor--validate-required-options obj '(:hook)))
 
@@ -369,10 +372,11 @@ the body.")
 ;;; Expression-value (listener)
 
 
-(cl-defmethod monitor--setup ((obj monitor--expression-value-listener) monitor)
+(cl-defmethod monitor--setup ((obj monitor--expression-value-listener))
   "We require the `:expr' and `:pred' arguments to be bound."
   (monitor--validate-required-options obj '(:expr :pred))
-  (let* ((pred-old (oref monitor trigger-pred))
+  (let* ((monitor (oref obj monitor))
+         (pred-old (oref monitor trigger-pred))
          (pred-new (lambda ()
                      (let* ((expr (oref obj expr))
                             (old (oref obj value))

@@ -39,9 +39,9 @@
 (defclass monitor-test--expression-value-listener (monitor--expression-value-listener)
   (()))
 
-(cl-defmethod monitor--disable ((_ monitor-test--expression-value-listener) _))
+(cl-defmethod monitor--disable ((_ monitor-test--expression-value-listener)))
 
-(cl-defmethod monitor--enable ((_ monitor-test--expression-value-listener) _))
+(cl-defmethod monitor--enable ((_ monitor-test--expression-value-listener)))
 
 (monitor--register-listener 'monitor-test--expression-value-listener)
 
