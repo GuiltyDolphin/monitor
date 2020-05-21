@@ -80,7 +80,7 @@ This is a simple wrapper around `monitor-define-monitor'.
 ;;;;;;;;;;;;;;;;;
 
 
-(ert-deftest monitor-test-monitorp ()
+(ert-deftest monitor-test:monitorp ()
   "Tests for `monitorp'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
 
@@ -98,7 +98,7 @@ This is a simple wrapper around `monitor-define-monitor'.
       ;; now it is no longer a monitor
       (should (eq nil (monitorp monitor-symbol))))))
 
-(ert-deftest monitor-test-monitor-enable-disable ()
+(ert-deftest monitor-test:monitor-enable-disable ()
   "Tests for `monitor-enable' and `monitor-disable'."
   (monitor--test-with-uninterned-symbols (monitor-symbol monitor-child counter-enabled counter-disabled)
     (set counter-enabled 0)
@@ -171,7 +171,7 @@ This is a simple wrapper around `monitor-define-monitor'.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(ert-deftest monitor-test-hook-monitor ()
+(ert-deftest monitor-test:hook-monitor ()
   "Tests for the 'hook monitor."
   (monitor--test-with-uninterned-symbols (monitor-symbol hook-symbol counter-a)
     (set counter-a 0)
@@ -212,7 +212,7 @@ This is a simple wrapper around `monitor-define-monitor'.
       (should (eq nil (symbol-value hook-symbol))))))
 
 
-(ert-deftest monitor-test:expression-value-monitor ()
+(ert-deftest monitor-test:expression-value ()
   "Tests for the 'expression-value monitor."
   (monitor--test-with-uninterned-symbols (monitor-symbol counter-a counter-b)
     (set counter-a 0)
