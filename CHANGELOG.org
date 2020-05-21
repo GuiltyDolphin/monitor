@@ -5,6 +5,10 @@
 
 * Unreleased
 
+This release constitutes a major change to the API of
+monitor. Please consult the documentation for up-to-date
+information on how to use monitor.
+
 ** Added
 
 - new custom error =monitor--missing-required-option=

@@ -56,7 +56,7 @@
   "Missing required option(s)")
 
 (define-error 'monitor--does-not-inherit-base-monitor-class
-  "The class does not inherit from `monitor--base'")
+  "The class does not inherit from `monitor--monitor'")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -68,6 +68,15 @@
   "Monitor expressions."
   :group 'lisp
   :prefix 'monitor-)
+
+
+;;;;;;;;;;;;;
+;; Globals ;;
+;;;;;;;;;;;;;
+
+
+(defvar monitor--listener-classes nil
+  "Alist of registered listener symbols and their respective classes.")
 
 
 ;;;;;;;;;;;;;;;;;;;
@@ -126,9 +135,9 @@ This fails if `obj' does not satisfy `monitorp'."
 
 (defun monitorp (monitor)
   "Return non-NIL if MONITOR is a monitor."
-  (or (and (monitor--base--eieio-childp monitor) t)
+  (or (and (monitor--monitor--eieio-childp monitor) t)
       (and (symbolp monitor)
-           (monitor--base--eieio-childp (monitor--symbol-monitor-object monitor))
+           (monitor--monitor--eieio-childp (monitor--symbol-monitor-object monitor))
            t)))
 
 (defun monitor--enabled-p (monitor)
@@ -139,40 +148,51 @@ This fails if `obj' does not satisfy `monitorp'."
   "T if MONITOR is disabled."
   (not (monitor--enabled-p monitor)))
 
+(defun monitor--parse-listeners (listener-spec monitor)
+  "Parse LISTENER-SPEC into appropriate listeners for the given MONITOR."
+  (mapcar
+   (lambda (spec)
+     (let* ((lclass (monitor--get-listener-class-for-alias (car spec)))
+            (args (cdr spec))
+            (listener (apply lclass args)))
+       (monitor--setup listener monitor)
+       listener)) listener-spec))
 
-;;;;;;;;;;;;;;;;;;;
-;;;;; Classes ;;;;;
-;;;;;;;;;;;;;;;;;;;
+(defun monitor--get-listener-class-for-alias (alias)
+  "Retrieve the listener class associated with the symbol ALIAS."
+  (or (alist-get alias monitor--listener-classes)
+      (error "%s is not known to be a listener" alias)))
+
+(defun monitor--register-listener (class &optional alias)
+  "Register CLASS as a listener with optional alias ALIAS.
+
+You need to do this if you want to use CLASS in `define-monitor' listener specifications."
+  (unless (child-of-class-p class 'monitor--listener)
+    (error "%s does not inherit from 'monitor--listener" class))
+  (let ((alias (or alias (eieio-class-name class))))
+    (add-to-list 'monitor--listener-classes (cons alias class))))
 
 
-(defclass monitor--base ()
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Classes - Listeners ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defclass monitor--listener ()
   ((enabled :initform nil
             :type booleanp
-            :documentation "Non-NIL if the monitor is currently enabled (allowed to monitor).
+            :documentation "Non-NIL if the listener is currently enabled (allowed to listen).
 
-Do not modify this value manually, instead use `monitor-enable' and `monitor-disable'."))
+Do not modify this value manually, instead use `monitor-enable' and `monitor-disable' on the parent monitor."))
   :abstract t
-  :documentation "Abstract base class for all monitors.")
+  :documentation "Abstract base class for all listeners.")
 
-(defclass monitor--trigger (monitor--base)
-  ((trigger :initarg :trigger
-            :initform #'ignore
-            :type functionp
-            :documentation "Trigger run whenever the monitor is activated.")
-   (trigger-pred
-    :initarg :trigger-pred
-    :type functionp
-    :initform (-const t)
-    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects."))
-  :abstract t
-  :documentation "Abstract class for monitors that support instantaneous triggering.")
-
-(defclass monitor--hook (monitor--trigger)
+(defclass monitor--hook-listener (monitor--listener)
   ((hook :initarg :hook
          :documentation "Hook variable to target."))
-  :documentation "Monitor for triggering on hooks.")
+  :documentation "Listener for triggering on hooks.")
 
-(defclass monitor--expression-value (monitor--trigger)
+(defclass monitor--expression-value-listener (monitor--listener)
   ((expr :initarg :expr
          :documentation "Expression to monitor. It's probably best to keep this free of side-effects.")
    (pred :initarg :pred
@@ -182,7 +202,34 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
 The function is passed the old and new values and arguments, and should return non-NIL if the monitor should trigger.")
    (value :documentation "Last known value of `:expr' (don't set this manually)."))
   :abstract t
-  :documentation "Abstract class for monitors which should only trigger if an expression has reached a desired state since the last tick.")
+  :documentation "Abstract class for listeners which should only trigger if an expression has reached a desired state since the last tick.")
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Classes - Monitors ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defclass monitor--monitor ()
+  ((enabled :initform nil
+            :type booleanp
+            :documentation "Non-NIL if the monitor is currently enabled (allowed to monitor).
+
+Do not modify this value manually, instead use `monitor-enable' and `monitor-disable'.")
+   (trigger-on :initarg :trigger-on
+               :initform nil
+               :documentation "Specification for listeners that should trigger the monitor.")
+   (on-trigger :initarg :on-trigger
+               :initform #'ignore
+               :type functionp
+               :documentation "Run whenever one of the listeners in `:trigger-on' is triggered.")
+   (listeners :initform nil)
+   (trigger-pred
+    :initarg :trigger-pred
+    :type functionp
+    :initform (-const t)
+    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects."))
+  :documentation "Base class for all monitors.")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -216,38 +263,55 @@ Note that you should only use this when implementing the method behaviour via `c
     (unless (monitor--disabled-p m) (monitor--disable m))))
 
 
-;;; Base
+;;; Monitor (monitor)
 
 
-(cl-defmethod monitor--enable :after ((obj monitor--base))
+(cl-defmethod monitor--enable :after ((obj monitor--monitor))
   (oset obj enabled t))
 
-(cl-defmethod monitor--disable :after ((obj monitor--base))
+(cl-defmethod monitor--disable :after ((obj monitor--monitor))
+  (oset obj enabled nil))
+
+(cl-defmethod monitor--enable ((obj monitor--monitor))
+  (dolist (listener (oref obj listeners))
+    (monitor--enable listener obj)))
+
+(cl-defmethod monitor--disable ((obj monitor--monitor))
+  (dolist (listener (oref obj listeners))
+    (monitor--disable listener obj)))
+
+
+;;; Listener (listener)
+
+
+(cl-defmethod monitor--enable :after ((obj monitor--listener) _)
+  (oset obj enabled t))
+
+(cl-defmethod monitor--disable :after ((obj monitor--listener) _)
   (oset obj enabled nil))
 
 
-;;; Hook
+;;; Hook (listener)
 
 
-(defun monitor--hook-build-hook-fn (obj)
-  "Build a form suitable for adding to a hook for OBJ."
-  (lambda () (monitor--trigger--trigger obj)))
+(defun monitor--hook-build-hook-fn (monitor)
+  "Build a form suitable for adding to a hook for the MONITOR."
+  (lambda () (monitor--trigger--trigger monitor)))
 
-(cl-defmethod monitor--enable ((obj monitor--hook))
-  (add-hook (oref obj hook) (monitor--hook-build-hook-fn obj)))
+(cl-defmethod monitor--enable ((obj monitor--hook-listener) monitor)
+  (add-hook (oref obj hook) (monitor--hook-build-hook-fn monitor)))
 
-(cl-defmethod monitor--disable ((obj monitor--hook))
-  (remove-hook (oref obj hook) (monitor--hook-build-hook-fn obj))
-  (oset obj enabled nil))
-
-
-;;; Expression-value
+(cl-defmethod monitor--disable ((obj monitor--hook-listener) monitor)
+  (remove-hook (oref obj hook) (monitor--hook-build-hook-fn monitor)))
 
 
-(cl-defmethod monitor--enable :before ((obj monitor--expression-value))
+;;; Expression-value (listener)
+
+
+(cl-defmethod monitor--enable :before ((obj monitor--expression-value-listener) _)
   (oset obj value (eval (oref obj expr))))
 
-(cl-defmethod monitor--disable :before ((obj monitor--expression-value))
+(cl-defmethod monitor--disable :before ((obj monitor--expression-value-listener) _)
   (slot-makeunbound obj 'value))
 
 
@@ -257,7 +321,7 @@ Note that you should only use this when implementing the method behaviour via `c
 
 
 (cl-defgeneric monitor--setup (obj)
-  "Initialize the monitor object OBJ.
+  "Initialize OBJ.
 
 This method is called when an instance is created with
 `monitor-define-monitor', so it's a good place to put any
@@ -278,34 +342,44 @@ the body.")
       (signal 'monitor--missing-required-option (nreverse missing-opts)))))
 
 
-;;; Base
+;;; Monitor (monitor)
 
 
-(cl-defmethod monitor--setup ((_ monitor--base))
-  "No additional setup required for base monitor.")
+(cl-defmethod monitor--setup ((obj monitor--monitor))
+  (let ((trigger-on (monitor--parse-listeners (oref obj trigger-on) obj)))
+    (oset obj trigger-on trigger-on))
+  (oset obj listeners (oref obj trigger-on)))
 
 
-;;; Hook
+;;; Listener (listener)
 
 
-(cl-defmethod monitor--setup :after ((obj monitor--hook))
+(cl-defmethod monitor--setup ((_ monitor--listener) __)
+  "No additional setup required for base listener.")
+
+
+;;; Hook (listener)
+
+
+(cl-defmethod monitor--setup :after ((obj monitor--hook-listener) _)
   "We require the :hook argument to be bound."
   (monitor--validate-required-options obj '(:hook)))
 
 
-;;; Expression-value
+;;; Expression-value (listener)
 
 
-(cl-defmethod monitor--setup ((obj monitor--expression-value))
+(cl-defmethod monitor--setup ((obj monitor--expression-value-listener) monitor)
   "We require the `:expr' and `:pred' arguments to be bound."
   (monitor--validate-required-options obj '(:expr :pred))
-  (let* ((pred-new (lambda (obj)
+  (let* ((pred-old (oref monitor trigger-pred))
+         (pred-new (lambda ()
                      (let* ((expr (oref obj expr))
                             (old (oref obj value))
                             (new (eval expr)))
                        (when (funcall (oref obj pred) old new) (oset obj value new) t)))))
     ;; we wrap up the old predicate with a new predicate that tracks the expression value
-    (oset obj trigger-pred (-andfn (oref obj trigger-pred) pred-new)))
+    (oset monitor trigger-pred (lambda () (and (funcall pred-old) (funcall pred-new)))))
   (cl-call-next-method))
 
 
@@ -318,15 +392,15 @@ the body.")
   "This method determines how to handle triggering a monitor, i.e., the moment the monitor becomes instantaneously active.")
 
 
-;;; Trigger
+;;; Monitor (monitor)
 
 
-(cl-defmethod monitor--trigger--trigger ((obj monitor--trigger) &rest args)
+(cl-defmethod monitor--trigger--trigger ((obj monitor--monitor) &rest args)
   "Run the `:trigger' function of OBJ with ARGS as arguments.
 
-The monitor will only trigger if the predicate in `:trigger-pred' returns non-NIL when passed OBJ."
-  (when (funcall (oref obj trigger-pred) obj)
-    (monitor--funcall (oref obj trigger) args)))
+The monitor will only trigger if the predicate in `:trigger-pred' returns non-NIL."
+  (when (funcall (oref obj trigger-pred))
+    (monitor--funcall (oref obj on-trigger) args)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -342,8 +416,8 @@ DOCSTRING is the documentation string and is optional.
 
 These arguments can optionally be followed by key-value pairs.
 Each key has to be a keyword symbol, either `:class' or a keyword
-argument supported by the constructor of that class. It is an error
-not to specify a class.
+argument supported by the constructor of that class.  If no class
+is specified, it defaults to `monitor--monitor'.
 
 \(fn NAME ARGLIST [DOCSTRING] [KEYWORD VALUE]...)"
   (declare (debug (&define name lambda-list
@@ -353,11 +427,10 @@ not to specify a class.
            (indent defun))
   (ignore arglist) ; to prevent warning about unused ARGLIST
   (let ((obj (make-symbol "obj")))
-    (pcase-let ((`(,class ,slots ,docstr _)
-                 (monitor--expand-define-args args)))
-      (when (null class)
-        (error "You must specify a non-NIL value for `:class'"))
-      (unless (child-of-class-p class 'monitor--base)
+    (pcase-let* ((`(,class ,slots ,docstr _)
+                  (monitor--expand-define-args args))
+                 (class (or class 'monitor--monitor)))
+      (unless (child-of-class-p class 'monitor--monitor)
         (signal 'monitor--does-not-inherit-base-monitor-class class))
       `(progn
          (let ((,obj (,class ,@slots)))
@@ -366,6 +439,15 @@ not to specify a class.
            (put ',name ,monitor--instance-prop ,obj))))))
 
 (defalias 'define-monitor 'monitor-define-monitor)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Default setup ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(monitor--register-listener 'monitor--hook-listener 'hook)
+(monitor--register-listener 'monitor--expression-value-listener 'expression-value)
 
 
 (provide 'monitor)

@@ -13,7 +13,7 @@
 (defclass monitor-test--not-a-monitor ()
   (()))
 
-(defclass monitor-test--empty-monitor (monitor--base)
+(defclass monitor-test--empty-monitor (monitor--monitor)
   (())
   :documentation "Empty monitor for testing without side effects.")
 
@@ -21,7 +21,7 @@
 
 (cl-defmethod monitor--disable ((_ monitor-test--empty-monitor)))
 
-(defclass monitor-test--enable-disable-monitor (monitor--base)
+(defclass monitor-test--enable-disable-monitor (monitor--monitor)
   ((enable-var :initarg :enable-var)
    (disable-var :initarg :disable-var)))
 
@@ -36,12 +36,14 @@
 
 (cl-defmethod monitor--enable ((_ monitor-test--enable-disable-monitor-child)))
 
-(defclass monitor-test--expression-value (monitor--expression-value)
+(defclass monitor-test--expression-value-listener (monitor--expression-value-listener)
   (()))
 
-(cl-defmethod monitor--disable ((_ monitor-test--expression-value)))
+(cl-defmethod monitor--disable ((_ monitor-test--expression-value-listener) _))
 
-(cl-defmethod monitor--enable ((_ monitor-test--expression-value)))
+(cl-defmethod monitor--enable ((_ monitor-test--expression-value-listener) _))
+
+(monitor--register-listener 'monitor-test--expression-value-listener)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -65,14 +67,14 @@
   `(should (equal '(monitor--missing-required-option . ,opts)
                   (should-error ,form :type 'monitor--missing-required-option))))
 
-(defun monitor-test--define-monitor (name-sym class &rest args)
+(defun monitor-test--define-monitor (name-sym &rest args)
   "Define a new monitor whose name is NAME-SYM with ARGS as the remaining args.
 
 This is a simple wrapper around `monitor-define-monitor'.
 
-\(fn NAME-SYM CLASS [KEYWORD VALUE]...)"
+\(fn NAME-SYM [KEYWORD VALUE]...)"
   (declare (indent defun))
-  (eval `(monitor-define-monitor ,name-sym () :class ',class ,@args)))
+  (eval `(monitor-define-monitor ,name-sym () ,@args)))
 
 
 ;;;;;;;;;;;;;;;;;
@@ -135,7 +137,7 @@ This is a simple wrapper around `monitor-define-monitor'.
   "Basic tests for `define-monitor'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
     ;; 'monitor-test--not-a-monitor does not inherit from the base monitor class
-    (should-error (monitor-test--define-monitor monitor-symbol 'monitor-test--not-a-monitor)
+    (should-error (monitor-test--define-monitor monitor-symbol :class 'monitor-test--not-a-monitor)
                   :type 'monitor--does-not-inherit-base-monitor-class)))
 
 (ert-deftest monitor-test:define-monitor:return-is-instance ()
@@ -161,7 +163,7 @@ This is a simple wrapper around `monitor-define-monitor'.
                   :type 'wrong-type-argument)
     (should-error (monitor-enable monitor-symbol)
                   :type 'wrong-type-argument)
-    (monitor-test--define-monitor monitor-symbol 'monitor-test--empty-monitor)
+    (monitor-test--define-monitor monitor-symbol :class 'monitor-test--empty-monitor)
     ;; this shouldn't error
     (monitor-enable monitor-symbol)))
 
@@ -179,12 +181,11 @@ This is a simple wrapper around `monitor-define-monitor'.
 
     ;; the :hook option is required
     (monitor-test--should-error-missing-options (:hook)
-      (monitor-test--define-monitor monitor-symbol 'monitor--hook))
+      (monitor-test--define-monitor monitor-symbol :trigger-on [(hook)]))
 
     (let* ((instance (eval `(monitor-define-monitor ,monitor-symbol ()
-                              :class 'monitor--hook
-                              :trigger (lambda () (setq ,counter-a (1+ ,counter-a)))
-                              :hook ',hook-symbol))))
+                              :trigger-on [(hook :hook ,hook-symbol)]
+                              :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))
       ;; disabled
       (should (eq nil (monitor--enabled-p instance)))
       (should (eq nil (symbol-value hook-symbol)))
@@ -220,14 +221,14 @@ This is a simple wrapper around `monitor-define-monitor'.
 
     ;; the :expr and :pred options are required
     (monitor-test--should-error-missing-options (:expr :pred)
-      (monitor-test--define-monitor monitor-symbol 'monitor-test--expression-value))
+      (monitor-test--define-monitor monitor-symbol :trigger-on [(monitor-test--expression-value-listener)]))
 
     (unwind-protect
         (let* ((instance (eval `(monitor-define-monitor ,monitor-symbol ()
-                                  :class 'monitor-test--expression-value
-                                  :trigger (lambda () (setq ,counter-a (1+ ,counter-a)))
-                                  :expr ',counter-b
-                                  :pred (lambda (old new) (> new old))))))
+                                  :trigger-on [(monitor-test--expression-value-listener
+                                                :expr ,counter-b
+                                                :pred (lambda (old new) (> new old)))]
+                                  :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))
           (monitor-enable monitor-symbol)
 
           ;; enabled
