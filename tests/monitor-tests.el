@@ -67,8 +67,17 @@
   `(should (equal '(monitor--missing-required-option . ,opts)
                   (should-error ,form :type 'monitor--missing-required-option))))
 
-(defun monitor-test--define-monitor (name-sym &rest args)
-  "Define a new monitor whose name is NAME-SYM with ARGS as the remaining args.
+(defun monitor-test--define-monitor (&rest args)
+  "Define a new monitor with ARGS as arguments.
+
+This is a simple wrapper around `monitor-define-monitor'.
+
+\(fn [KEYWORD VALUE]...)"
+  (declare (indent 1))
+  (eval `(monitor-create () ,@args)))
+
+(defun monitor-test--define-monitor-named (name-sym &rest args)
+  "Define a new monitor named NAME-SYM with ARGS as arguments.
 
 This is a simple wrapper around `monitor-define-monitor'.
 
@@ -89,7 +98,7 @@ This is a simple wrapper around `monitor-define-monitor'.
     ;; initially, we don't expect it to be a monitor.
     (should (eq nil (monitorp monitor-symbol)))
 
-    (let ((instance (monitor-test--define-monitor monitor-symbol 'monitor-test--empty-monitor)))
+    (let ((instance (monitor-test--define-monitor-named monitor-symbol :class 'monitor-test--empty-monitor)))
       ;; now we've created a monitor, it should recognize it as one
       (should (eq t (monitorp monitor-symbol)))
 
@@ -100,7 +109,7 @@ This is a simple wrapper around `monitor-define-monitor'.
       ;; now it is no longer a monitor
       (should (eq nil (monitorp monitor-symbol))))
 
-    (let ((instance (monitor-create :class 'monitor-test--empty-monitor)))
+    (let ((instance (monitor-test--define-monitor :class 'monitor-test--empty-monitor)))
       ;; the instance should be a monitor
       (should (eq t (monitorp instance))))))
 
@@ -137,18 +146,17 @@ This is a simple wrapper around `monitor-define-monitor'.
       (monitor-disable monitor-child)
       (should (= 2 (symbol-value counter-disabled))))))
 
-(ert-deftest monitor-test:define-monitor:basic ()
+(ert-deftest monitor-test:create-monitor:basic ()
   "Basic tests for `define-monitor'."
-  (monitor--test-with-uninterned-symbols (monitor-symbol)
-    ;; 'monitor-test--not-a-monitor does not inherit from the base monitor class
-    (should-error (monitor-test--define-monitor monitor-symbol :class 'monitor-test--not-a-monitor)
-                  :type 'monitor--does-not-inherit-base-monitor-class)))
+  ;; 'monitor-test--not-a-monitor does not inherit from the base monitor class
+  (should-error (monitor-create () :class 'monitor-test--not-a-monitor)
+                :type 'monitor--does-not-inherit-base-monitor-class))
 
 (ert-deftest monitor-test:define-monitor:return-is-instance ()
   "Test that the return value of `monitor-define-monitor' is the actual monitor instance."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
-    (let* ((ret-instance (monitor-test--define-monitor monitor-symbol
-                           'monitor-test--empty-monitor))
+    (let* ((ret-instance (monitor-test--define-monitor-named monitor-symbol
+                           :class 'monitor-test--empty-monitor))
            (sym-instance (monitor--symbol-monitor-object monitor-symbol)))
       (should (eq sym-instance ret-instance))
       (should (eq nil (monitor--enabled-p sym-instance)))
@@ -167,9 +175,10 @@ This is a simple wrapper around `monitor-define-monitor'.
                   :type 'wrong-type-argument)
     (should-error (monitor-enable monitor-symbol)
                   :type 'wrong-type-argument)
-    (monitor-test--define-monitor monitor-symbol :class 'monitor-test--empty-monitor)
+    (monitor-test--define-monitor-named monitor-symbol :class 'monitor-test--empty-monitor)
     ;; this shouldn't error
-    (monitor-enable monitor-symbol)))
+    (monitor-enable monitor-symbol)
+    (monitor-enable (monitor-create () :class 'monitor-test--empty-monitor))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -179,15 +188,15 @@ This is a simple wrapper around `monitor-define-monitor'.
 
 (ert-deftest monitor-test:hook-monitor ()
   "Tests for the 'hook monitor."
-  (monitor--test-with-uninterned-symbols (monitor-symbol hook-symbol counter-a)
+  (monitor--test-with-uninterned-symbols (hook-symbol counter-a)
     (set counter-a 0)
     (set hook-symbol nil)
 
     ;; the :hook option is required
     (monitor-test--should-error-missing-options (:hook)
-      (monitor-test--define-monitor monitor-symbol :trigger-on [(hook)]))
+      (monitor-test--define-monitor :trigger-on [(hook)]))
 
-    (let* ((instance (eval `(monitor-define-monitor ,monitor-symbol ()
+    (let* ((instance (eval `(monitor-test--define-monitor
                               :trigger-on [(hook :hook ,hook-symbol)]
                               :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))
       ;; disabled
@@ -198,7 +207,7 @@ This is a simple wrapper around `monitor-define-monitor'.
       ;; counter should remain unchanged, as the monitor should not be
       ;; running anything from the hook
       (should (= 0 (symbol-value counter-a)))
-      (monitor-enable monitor-symbol)
+      (monitor-enable instance)
 
       ;; enabled
       (should (eq t (monitor--enabled-p instance)))
@@ -210,7 +219,7 @@ This is a simple wrapper around `monitor-define-monitor'.
       ;; and should have tied into the hook
       (should (= 1 (symbol-value counter-a)))
 
-      (monitor-disable monitor-symbol)
+      (monitor-disable instance)
 
       ;; disabled
       (should (eq nil (monitor--enabled-p instance)))
@@ -219,20 +228,20 @@ This is a simple wrapper around `monitor-define-monitor'.
 
 (ert-deftest monitor-test:expression-value ()
   "Tests for the 'expression-value monitor."
-  (monitor--test-with-uninterned-symbols (monitor-symbol counter-a counter-b)
+  (monitor--test-with-uninterned-symbols (counter-a counter-b)
     (set counter-a 0)
     (set counter-b 0)
 
     ;; the :expr and :pred options are required
     (monitor-test--should-error-missing-options (:expr :pred)
-      (monitor-test--define-monitor monitor-symbol :trigger-on [(monitor-test--expression-value-listener)]))
+      (monitor-test--define-monitor :trigger-on [(monitor-test--expression-value-listener)]))
 
-    (let* ((instance (eval `(monitor-define-monitor ,monitor-symbol ()
+    (let* ((instance (eval `(monitor-test--define-monitor
                               :trigger-on [(monitor-test--expression-value-listener
                                             :expr ,counter-b
                                             :pred (lambda (old new) (> new old)))]
                               :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))
-      (monitor-enable monitor-symbol)
+      (monitor-enable instance)
 
       ;; enabled
       (should (eq t (monitor--enabled-p instance)))
@@ -251,7 +260,7 @@ This is a simple wrapper around `monitor-define-monitor'.
       (monitor--trigger--trigger instance)
       (should (= 1 (symbol-value counter-a)))
 
-      (monitor-disable monitor-symbol)
+      (monitor-disable instance)
 
       ;; disabled
       (should (eq nil (monitor--enabled-p instance)))
