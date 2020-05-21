@@ -98,7 +98,11 @@ This is a simple wrapper around `monitor-define-monitor'.
 
       (monitor--remove-monitor monitor-symbol)
       ;; now it is no longer a monitor
-      (should (eq nil (monitorp monitor-symbol))))))
+      (should (eq nil (monitorp monitor-symbol))))
+
+    (let ((instance (monitor-create :class 'monitor-test--empty-monitor)))
+      ;; the instance should be a monitor
+      (should (eq t (monitorp instance))))))
 
 (ert-deftest monitor-test:monitor-enable-disable ()
   "Tests for `monitor-enable' and `monitor-disable'."

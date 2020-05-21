@@ -231,7 +231,11 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
     :initarg :trigger-pred
     :type functionp
     :initform (-const t)
-    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects."))
+    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects.")
+   (documentation
+    :initarg :documentation
+    :type stringp
+    :documentation "Optional documentation for the monitor."))
   :documentation "Base class for all monitors.")
 
 
@@ -412,6 +416,36 @@ The monitor will only trigger if the predicate in `:trigger-pred' returns non-NI
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+(defmacro monitor-create (arglist &rest args)
+  "Create a new monitor.
+
+ARGLIST is currently ignored, but may be used in future.
+DOCSTRING is the documentation string and is optional.
+
+These arguments can optionally be followed by key-value pairs.
+Each key has to be a keyword symbol, either `:class' or a keyword
+argument supported by the constructor of that class.  If no class
+is specified, it defaults to `monitor--monitor'.
+
+\(fn ARGLIST [DOCSTRING] [KEYWORD VALUE]...)"
+  (declare (debug (&define lambda-list
+                           [&optional lambda-doc]
+                           [&rest keywordp sexp]))
+           (doc-string 2)
+           (indent defun))
+  (ignore arglist) ; to prevent warning about unused ARGLIST
+  (pcase-let* ((`(,class ,slots ,docstr _)
+                (monitor--expand-define-args args))
+               (class (or class 'monitor--monitor)))
+    (unless (child-of-class-p class 'monitor--monitor)
+      (signal 'monitor--does-not-inherit-base-monitor-class class))
+    (let ((obj (make-symbol "obj")))
+      `(progn
+         (let ((,obj (,class ,@slots)))
+           (monitor--setup ,obj)
+           ,obj)))))
+
+
 (defmacro monitor-define-monitor (name arglist &rest args)
   "Define NAME as a monitor.
 
@@ -430,17 +464,12 @@ is specified, it defaults to `monitor--monitor'.
            (doc-string 3)
            (indent defun))
   (ignore arglist) ; to prevent warning about unused ARGLIST
-  (let ((obj (make-symbol "obj")))
-    (pcase-let* ((`(,class ,slots ,docstr _)
-                  (monitor--expand-define-args args))
-                 (class (or class 'monitor--monitor)))
-      (unless (child-of-class-p class 'monitor--monitor)
-        (signal 'monitor--does-not-inherit-base-monitor-class class))
-      `(progn
-         (let ((,obj (,class ,@slots)))
-           (monitor--setup ,obj)
-           (put ',name 'function-documentation ,docstr)
-           (put ',name ,monitor--instance-prop ,obj))))))
+  (let ((obj (eval `(monitor-create ,arglist ,@args))))
+    `(progn
+       (when ,(slot-boundp obj 'documentation)
+         (put ',name 'function-documentation (oref ,obj documentation)))
+       (put ',name ,monitor--instance-prop ,obj)
+       ,obj)))
 
 (defalias 'define-monitor 'monitor-define-monitor)
 
