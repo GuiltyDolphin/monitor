@@ -70,20 +70,11 @@
 (defun monitor-test--define-monitor (&rest args)
   "Define a new monitor with ARGS as arguments.
 
-This is a simple wrapper around `monitor-define-monitor'.
+This is a simple wrapper around `monitor-create'.
 
 \(fn [KEYWORD VALUE]...)"
   (declare (indent 1))
-  (eval `(monitor-create () ,@args)))
-
-(defun monitor-test--define-monitor-named (name-sym &rest args)
-  "Define a new monitor named NAME-SYM with ARGS as arguments.
-
-This is a simple wrapper around `monitor-define-monitor'.
-
-\(fn NAME-SYM [KEYWORD VALUE]...)"
-  (declare (indent defun))
-  (eval `(monitor-define-monitor ,name-sym () ,@args)))
+  (apply #'monitor-create () args))
 
 
 ;;;;;;;;;;;;;;;;;
@@ -94,57 +85,42 @@ This is a simple wrapper around `monitor-define-monitor'.
 (ert-deftest monitor-test:monitorp ()
   "Tests for `monitorp'."
   (monitor--test-with-uninterned-symbols (monitor-symbol)
-
-    ;; initially, we don't expect it to be a monitor.
-    (should (eq nil (monitorp monitor-symbol)))
-
-    (let ((instance (monitor-test--define-monitor-named monitor-symbol :class 'monitor-test--empty-monitor)))
-      ;; now we've created a monitor, it should recognize it as one
-      (should (eq t (monitorp monitor-symbol)))
-
-      ;; the instance should be a monitor
-      (should (eq t (monitorp instance)))
-
-      (monitor--remove-monitor monitor-symbol)
-      ;; now it is no longer a monitor
-      (should (eq nil (monitorp monitor-symbol))))
-
     (let ((instance (monitor-test--define-monitor :class 'monitor-test--empty-monitor)))
       ;; the instance should be a monitor
       (should (eq t (monitorp instance))))))
 
 (ert-deftest monitor-test:monitor-enable-disable ()
   "Tests for `monitor-enable' and `monitor-disable'."
-  (monitor--test-with-uninterned-symbols (monitor-symbol monitor-child counter-enabled counter-disabled)
+  (monitor--test-with-uninterned-symbols (counter-enabled counter-disabled)
     (set counter-enabled 0)
     (set counter-disabled 0)
-    (let ((instance (eval `(monitor-define-monitor ,monitor-symbol ()
-                             :class 'monitor-test--enable-disable-monitor
-                             :enable-var ',counter-enabled
-                             :disable-var ',counter-disabled))))
+    (let ((instance (monitor-test--define-monitor
+                     :class 'monitor-test--enable-disable-monitor
+                     :enable-var counter-enabled
+                     :disable-var counter-disabled)))
       (should (= 0 (symbol-value counter-enabled)))
       (should (= 0 (symbol-value counter-disabled)))
       (should (eq t (monitor--disabled-p instance)))
-      (monitor-enable monitor-symbol)
+      (monitor-enable instance)
       (should (= 1 (symbol-value counter-enabled)))
       (should (eq t (monitor--enabled-p instance)))
-      (monitor-enable monitor-symbol)
+      (monitor-enable instance)
       (should (= 1 (symbol-value counter-enabled)))
-      (monitor-disable monitor-symbol)
+      (monitor-disable instance)
       (should (= 1 (symbol-value counter-disabled)))
       (should (eq t (monitor--disabled-p instance)))
-      (monitor-disable monitor-symbol)
+      (monitor-disable instance)
       (should (= 1 (symbol-value counter-disabled)))
-      (eval `(monitor-define-monitor ,monitor-child ()
-               :class 'monitor-test--enable-disable-monitor-child
-               :enable-var ',counter-enabled
-               :disable-var ',counter-disabled))
-      (should (= 1 (symbol-value counter-enabled)))
-      (should (= 1 (symbol-value counter-disabled)))
-      (monitor-enable monitor-child)
-      (should (= 1 (symbol-value counter-enabled)))
-      (monitor-disable monitor-child)
-      (should (= 2 (symbol-value counter-disabled))))))
+      (let ((child (monitor-test--define-monitor
+                     :class 'monitor-test--enable-disable-monitor-child
+                     :enable-var counter-enabled
+                     :disable-var counter-disabled)))
+        (should (= 1 (symbol-value counter-enabled)))
+        (should (= 1 (symbol-value counter-disabled)))
+        (monitor-enable child)
+        (should (= 1 (symbol-value counter-enabled)))
+        (monitor-disable child)
+        (should (= 2 (symbol-value counter-disabled)))))))
 
 (ert-deftest monitor-test:create-monitor:basic ()
   "Basic tests for `define-monitor'."
@@ -152,33 +128,12 @@ This is a simple wrapper around `monitor-define-monitor'.
   (should-error (monitor-create () :class 'monitor-test--not-a-monitor)
                 :type 'monitor--does-not-inherit-base-monitor-class))
 
-(ert-deftest monitor-test:define-monitor:return-is-instance ()
-  "Test that the return value of `monitor-define-monitor' is the actual monitor instance."
-  (monitor--test-with-uninterned-symbols (monitor-symbol)
-    (let* ((ret-instance (monitor-test--define-monitor-named monitor-symbol
-                           :class 'monitor-test--empty-monitor))
-           (sym-instance (monitor--symbol-monitor-object monitor-symbol)))
-      (should (eq sym-instance ret-instance))
-      (should (eq nil (monitor--enabled-p sym-instance)))
-      (should (eq nil (monitor--enabled-p ret-instance)))
-      (monitor-enable monitor-symbol)
-      (should (eq t (monitor--enabled-p sym-instance)))
-      (should (eq t (monitor--enabled-p ret-instance)))
-      (monitor-disable monitor-symbol)
-      (should (eq nil (monitor--enabled-p sym-instance)))
-      (should (eq nil (monitor--enabled-p ret-instance))))))
-
 (ert-deftest monitor-test:monitor-enable:accepts-only-monitors ()
   "Test that `monitor-enable' only accepts valid monitors or monitor symbols."
-  (monitor--test-with-uninterned-symbols (monitor-symbol)
-    (should-error (monitor-enable nil)
-                  :type 'wrong-type-argument)
-    (should-error (monitor-enable monitor-symbol)
-                  :type 'wrong-type-argument)
-    (monitor-test--define-monitor-named monitor-symbol :class 'monitor-test--empty-monitor)
-    ;; this shouldn't error
-    (monitor-enable monitor-symbol)
-    (monitor-enable (monitor-create () :class 'monitor-test--empty-monitor))))
+  (should-error (monitor-enable nil)
+                :type 'wrong-type-argument)
+  ;; this shouldn't error
+  (monitor-enable (monitor-test--define-monitor () :class 'monitor-test--empty-monitor)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

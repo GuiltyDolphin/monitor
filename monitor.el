@@ -441,34 +441,6 @@ is specified, it defaults to `monitor--monitor'.
       obj)))
 
 
-(defmacro monitor-define-monitor (name arglist &rest args)
-  "Define NAME as a monitor.
-
-ARGLIST is currently ignored, but may be used in future.
-DOCSTRING is the documentation string and is optional.
-
-These arguments can optionally be followed by key-value pairs.
-Each key has to be a keyword symbol, either `:class' or a keyword
-argument supported by the constructor of that class.  If no class
-is specified, it defaults to `monitor--monitor'.
-
-\(fn NAME ARGLIST [DOCSTRING] [KEYWORD VALUE]...)"
-  (declare (debug (&define name lambda-list
-                           [&optional lambda-doc]
-                           [&rest keywordp sexp]))
-           (doc-string 3)
-           (indent defun))
-  (ignore arglist) ; to prevent warning about unused ARGLIST
-  (let ((obj (eval `(monitor-create ,arglist ,@args))))
-    `(progn
-       (when ,(slot-boundp obj 'documentation)
-         (put ',name 'function-documentation (oref ,obj documentation)))
-       (put ',name ,monitor--instance-prop ,obj)
-       ,obj)))
-
-(defalias 'define-monitor 'monitor-define-monitor)
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Default setup ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;

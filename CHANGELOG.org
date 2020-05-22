@@ -19,8 +19,7 @@ information on how to use monitor.
   - =Makefile=
     - support for =build=, =clean=, =doc=, =install=, and
       =test= recipes
-- new function =monitor-create= for creating monitors without
-  assigning their value to a symbol
+- new function =monitor-create= for creating monitors
 
 ** Changed
 
@@ -33,8 +32,10 @@ information on how to use monitor.
 
 ** Removed
 
-- functions
+- functions and macros
+  - =define-monitor=
   - =monitor=
+  - =monitor-define-monitor=
   - =monitor-instance-create=
   - =monitor-run-monitor-option=
   - =monitor-run-monitor-option-with-parents=
