@@ -151,6 +151,9 @@ This is a simple wrapper around `monitor-create'.
     (monitor-test--should-error-missing-options (:hook)
       (monitor-test--define-monitor :trigger-on [(hook)]))
 
+    ;; first argument is taken to be the hook (this should not error)
+    (eval `(monitor-test--define-monitor :trigger-on [(hook ,hook-symbol)]))
+
     (let* ((instance (eval `(monitor-test--define-monitor
                               :trigger-on [(hook :hook ,hook-symbol)]
                               :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))

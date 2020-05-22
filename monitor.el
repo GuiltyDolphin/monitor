@@ -107,19 +107,29 @@ This fails if `obj' does not satisfy `monitorp'."
       (monitor--symbol-monitor-object obj)
     obj))
 
-(defun monitor--expand-define-args (args)
-  "Parse ARGS as a monitor definition argument list."
-  (let (class keys)
+(defun monitor--parse-keyword-value-args (args &optional special-keys)
+  "Parse ARGS as a series of keyword value pairs.
+
+If SPECIAL-KEYS is specified, it should be a series of keyword
+symbols to keep separate from the main keyword list, and will be
+returned as a separate element.
+
+The result is in the format (keyword-args special-args non-keyword-args)."
+  (let (keys specials)
     (while (keywordp (car args))
       (let ((k (pop args))
             (v (pop args)))
-        (if (eq k :class)
-            (setq class v)
+        (if (memq k special-keys)
+            (progn (push k specials) (push v specials))
           (push k keys)
           (push v keys))))
-    (list (if (eq (car-safe class) 'quote) (cadr class) class)
-          (nreverse keys)
-          args)))
+    (list (nreverse keys) (nreverse specials) args)))
+
+(defun monitor--expand-define-args (args)
+  "Parse ARGS as a monitor definition argument list."
+  (pcase-let* ((`(,keys ,specials ,args) (monitor--parse-keyword-value-args args '(:class)))
+               (class (plist-get specials :class)))
+    (list (if (eq (car-safe class) 'quote) (cadr class) class) keys args)))
 
 (defun monitor--remove-monitor (monitor)
   "Remove MONITOR's definition as a monitor."
@@ -151,7 +161,7 @@ This fails if `obj' does not satisfy `monitorp'."
    (lambda (spec)
      (let* ((lclass (monitor--get-listener-class-for-alias (car spec)))
             (args (cdr spec))
-            (listener (apply lclass args)))
+            (listener (apply lclass (monitor--parse-spec lclass args))))
        (oset listener monitor monitor)
        (monitor--setup listener)
        listener)) listener-spec))
@@ -382,6 +392,35 @@ the body.")
     ;; we wrap up the old predicate with a new predicate that tracks the expression value
     (oset monitor trigger-pred (lambda () (and (funcall pred-old) (funcall pred-new)))))
   (cl-call-next-method))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Specification parsing ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(cl-defgeneric monitor--parse-spec (obj args)
+  "Specify how to parse ARGS as a specification for OBJ.")
+
+
+;;; Listener (listener)
+
+
+(cl-defmethod monitor--parse-spec ((_ (subclass monitor--listener)) args)
+  args)
+
+
+;;; Hook (listener)
+
+
+(cl-defmethod monitor--parse-spec ((_ (subclass monitor--hook-listener)) args)
+  (pcase-let* ((`(,keys ,specials ,args)
+                (monitor--parse-keyword-value-args args '(:hook)))
+               (hook (if (plist-member specials :hook)
+                         (plist-get specials :hook)
+                       (pop args))))
+    (when hook (setq keys (plist-put keys :hook hook)))
+    (-concat keys args)))
 
 
 ;;;;;;;;;;;;;;;;
