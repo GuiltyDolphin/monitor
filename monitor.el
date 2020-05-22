@@ -109,9 +109,7 @@ This fails if `obj' does not satisfy `monitorp'."
 
 (defun monitor--expand-define-args (args)
   "Parse ARGS as a monitor definition argument list."
-  (let (class keys docstr)
-    (when (stringp (car args))
-      (setq docstr (pop args)))
+  (let (class keys)
     (while (keywordp (car args))
       (let ((k (pop args))
             (v (pop args)))
@@ -121,7 +119,6 @@ This fails if `obj' does not satisfy `monitorp'."
           (push v keys))))
     (list (if (eq (car-safe class) 'quote) (cadr class) class)
           (nreverse keys)
-          docstr
           args)))
 
 (defun monitor--remove-monitor (monitor)
@@ -231,11 +228,7 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
     :initarg :trigger-pred
     :type functionp
     :initform (-const t)
-    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects.")
-   (documentation
-    :initarg :documentation
-    :type stringp
-    :documentation "Optional documentation for the monitor."))
+    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects."))
   :documentation "Base class for all monitors.")
 
 
@@ -419,17 +412,12 @@ The monitor will only trigger if the predicate in `:trigger-pred' returns non-NI
 (defun monitor-create (&rest args)
   "Create a new monitor.
 
-DOCSTRING is the documentation string and is optional.
-
-These arguments can optionally be followed by key-value pairs.
-Each key has to be a keyword symbol, either `:class' or a keyword
-argument supported by the constructor of that class.  If no class
-is specified, it defaults to `monitor--monitor'.
-
-\(fn [DOCSTRING] [KEYWORD VALUE]...)"
-  (declare (doc-string 1)
-           (indent defun))
-  (pcase-let* ((`(,class ,slots ,docstr _)
+ARGS is a series of keyword-value pairs.  Each key has to be a
+keyword symbol, either `:class' or a keyword argument supported
+by the constructor of that class.  If no class is specified, it
+defaults to `monitor--monitor'."
+  (declare (indent 1))
+  (pcase-let* ((`(,class ,slots _)
                 (monitor--expand-define-args args))
                (class (or class 'monitor--monitor)))
     (unless (child-of-class-p class 'monitor--monitor)
