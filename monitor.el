@@ -416,10 +416,9 @@ The monitor will only trigger if the predicate in `:trigger-pred' returns non-NI
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defun monitor-create (arglist &rest args)
+(defun monitor-create (&rest args)
   "Create a new monitor.
 
-ARGLIST is currently ignored, but may be used in future.
 DOCSTRING is the documentation string and is optional.
 
 These arguments can optionally be followed by key-value pairs.
@@ -427,10 +426,9 @@ Each key has to be a keyword symbol, either `:class' or a keyword
 argument supported by the constructor of that class.  If no class
 is specified, it defaults to `monitor--monitor'.
 
-\(fn ARGLIST [DOCSTRING] [KEYWORD VALUE]...)"
-  (declare (doc-string 2)
+\(fn [DOCSTRING] [KEYWORD VALUE]...)"
+  (declare (doc-string 1)
            (indent defun))
-  (ignore arglist) ; to prevent warning about unused ARGLIST
   (pcase-let* ((`(,class ,slots ,docstr _)
                 (monitor--expand-define-args args))
                (class (or class 'monitor--monitor)))

@@ -74,7 +74,7 @@ This is a simple wrapper around `monitor-create'.
 
 \(fn [KEYWORD VALUE]...)"
   (declare (indent 1))
-  (apply #'monitor-create () args))
+  (apply #'monitor-create args))
 
 
 ;;;;;;;;;;;;;;;;;
@@ -125,7 +125,7 @@ This is a simple wrapper around `monitor-create'.
 (ert-deftest monitor-test:create-monitor:basic ()
   "Basic tests for `define-monitor'."
   ;; 'monitor-test--not-a-monitor does not inherit from the base monitor class
-  (should-error (monitor-create () :class 'monitor-test--not-a-monitor)
+  (should-error (monitor-create :class 'monitor-test--not-a-monitor)
                 :type 'monitor--does-not-inherit-base-monitor-class))
 
 (ert-deftest monitor-test:monitor-enable:accepts-only-monitors ()
