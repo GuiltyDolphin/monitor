@@ -207,6 +207,23 @@ You need to do this if you want to use CLASS in `define-monitor' guard specifica
     (add-to-list 'monitor--guard-classes (cons alias class))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Classes - Interfaces ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defclass monitor--can-trigger ()
+  ((guard-trigger
+    :initarg :guard-trigger
+    :initform nil
+    :documentation "Specification used to guard triggering.")
+   (on-trigger :initarg :on-trigger
+               :type functionp
+               :documentation "What to do when triggered."))
+  :abstract t
+  :documentation "Abstract class for things that can trigger.")
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Classes - Guards ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -239,21 +256,12 @@ The function is passed the old and new values and arguments, and should return n
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defclass monitor--listener ()
+(defclass monitor--listener (monitor--can-trigger)
   ((enabled :initform nil
             :type booleanp
             :documentation "Non-NIL if the listener is currently enabled (allowed to listen).
 
 Do not modify this value manually, instead use `monitor-enable' and `monitor-disable' on the parent monitor.")
-   (guard-trigger
-    :initarg :guard-trigger
-    :initform nil
-    :documentation "Specification used to guard triggering.")
-   (trigger-pred
-    :initarg :trigger-pred
-    :type functionp
-    :initform (-const t)
-    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects.")
    (owner :type monitorp
           :documentation "The monitor associated with this listener. Do not modify this value manually."))
   :abstract t
@@ -270,7 +278,7 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defclass monitor--monitor ()
+(defclass monitor--monitor (monitor--can-trigger)
   ((enabled :initform nil
             :type booleanp
             :documentation "Non-NIL if the monitor is currently enabled (allowed to monitor).
@@ -279,16 +287,7 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
    (trigger-on :initarg :trigger-on
                :initform nil
                :documentation "Specification for listeners that should trigger the monitor.")
-   (on-trigger :initarg :on-trigger
-               :initform #'ignore
-               :type functionp
-               :documentation "Run whenever one of the listeners in `:trigger-on' is triggered.")
-   (listeners :initform nil)
-   (trigger-pred
-    :initarg :trigger-pred
-    :type functionp
-    :initform (-const t)
-    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects."))
+   (listeners :initform nil))
   :documentation "Base class for all monitors.")
 
 
@@ -321,6 +320,18 @@ Note that you should only use this when implementing the method behaviour via `c
   "Disable MONITOR."
   (let ((m (monitor--require-monitor-obj monitor)))
     (unless (monitor--disabled-p m) (monitor--disable m))))
+
+
+;;; can-trigger (abstract)
+
+
+(cl-defmethod monitor--enable :after ((obj monitor--can-trigger))
+  (dolist (guard (oref obj guard-trigger))
+    (monitor--enable guard)))
+
+(cl-defmethod monitor--disable :after ((obj monitor--can-trigger))
+  (dolist (guard (oref obj guard-trigger))
+    (monitor--disable guard)))
 
 
 ;;; Monitor (monitor)
@@ -416,6 +427,14 @@ the body.")
       (signal 'monitor--missing-required-option (nreverse missing-opts)))))
 
 
+;;; can-trigger (abstract)
+
+
+(cl-defmethod monitor--setup :after ((obj monitor--can-trigger))
+  (let ((guard-trigger (monitor--parse-guards (oref obj guard-trigger) obj)))
+    (oset obj guard-trigger guard-trigger)))
+
+
 ;;; Monitor (monitor)
 
 
@@ -429,8 +448,9 @@ the body.")
 
 
 (cl-defmethod monitor--setup :after ((obj monitor--listener))
-  (let ((guard-trigger (monitor--parse-guards (oref obj guard-trigger) obj)))
-    (oset obj guard-trigger guard-trigger)))
+  ;; unless an :on-trigger was manually specified, we set this to call the owner
+  (unless (slot-boundp obj 'on-trigger)
+    (oset obj on-trigger (lambda () (monitor--trigger--trigger (oref obj owner))))))
 
 (cl-defmethod monitor--setup ((_ monitor--listener)))
 
@@ -455,17 +475,35 @@ the body.")
 
 (cl-defmethod monitor--setup ((obj monitor--expression-value-guard))
   "We require the `:expr' and `:pred' arguments to be bound."
-  (monitor--validate-required-options obj '(:expr :pred))
-  (let* ((owner (oref obj owner))
-         (pred-old (oref owner trigger-pred))
-         (pred-new (lambda ()
-                     (let* ((expr (oref obj expr))
-                            (old (oref obj value))
-                            (new (eval expr)))
-                       (when (funcall (oref obj pred) old new) (oset obj value new) t)))))
-    ;; we wrap up the old predicate with a new predicate that tracks the expression value
-    (oset owner trigger-pred (lambda () (and (funcall pred-old) (funcall pred-new)))))
-  (cl-call-next-method))
+  (monitor--validate-required-options obj '(:expr :pred)))
+
+
+;;;;;;;;;;;;;;;;;
+;; Predication ;;
+;;;;;;;;;;;;;;;;;
+
+
+(cl-defgeneric monitor--test-predicate (obj)
+  "Return T if we should proceed based on OBJ.")
+
+
+;;; List
+
+
+(cl-defmethod monitor--test-predicate ((obj list))
+  "Lists require all sub-predicates to succeed."
+  (-all-p #'monitor--test-predicate obj))
+
+
+;;; Expression-value (guard)
+
+
+(cl-defmethod monitor--test-predicate ((obj monitor--expression-value-guard))
+  (let* ((expr (oref obj expr))
+         (old (oref obj value))
+         (new (eval expr)))
+    (oset obj value new)
+    (funcall (oref obj pred) old new)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -509,30 +547,43 @@ the body.")
 ;;;;;;;;;;;;;;;;
 
 
-(cl-defgeneric monitor--trigger--trigger (obj)
+(cl-defgeneric monitor--trigger--trigger (obj &optional args)
   "This method determines how to handle triggering a monitor, i.e., the moment the monitor becomes instantaneously active.")
 
 
-;;; Listener (listener)
+;;; can-trigger (abstract)
 
 
-(cl-defmethod monitor--trigger--trigger ((obj monitor--listener) &optional args)
+(cl-defmethod monitor--trigger--trigger ((obj monitor--can-trigger) &optional args)
   "Run the `:on-trigger' function of the owner of OBJ with ARGS as arguments.
 
 Only triggers if the predicate in `:trigger-pred' returns non-NIL."
-  (when (funcall (oref obj trigger-pred))
-    (monitor--trigger--trigger (oref obj owner) args)))
+  (when (monitor--test-predicate (oref obj guard-trigger))
+    (monitor--run (oref obj on-trigger) args)))
 
 
-;;; Monitor (monitor)
+;;;;;;;;;;;;;
+;; Running ;;
+;;;;;;;;;;;;;
 
 
-(cl-defmethod monitor--trigger--trigger ((obj monitor--monitor) &optional args)
-  "Run the `:trigger' function of OBJ with ARGS as arguments.
+(cl-defgeneric monitor--run (obj &optional args))
 
-The monitor will only trigger if the predicate in `:trigger-pred' returns non-NIL."
-  (when (funcall (oref obj trigger-pred))
-    (monitor--funcall (oref obj on-trigger) args)))
+
+;;; functions
+
+
+(cl-defmethod monitor--run ((obj (head closure)) &optional args)
+  (monitor--funcall obj args))
+
+(cl-defmethod monitor--run ((obj (head lambda)) &optional args)
+  (monitor--funcall obj args))
+
+(cl-defmethod monitor--run ((obj function) &optional args)
+  (monitor--funcall obj args))
+
+(cl-defmethod monitor--run ((obj subr) &optional args)
+  (monitor--funcall obj args))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

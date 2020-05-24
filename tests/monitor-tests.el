@@ -183,45 +183,61 @@ This is a simple wrapper around `monitor-create'.
 
 (ert-deftest monitor-test:expression-value ()
   "Tests for the 'expression-value guard."
-  (monitor--test-with-uninterned-symbols (counter-a counter-b hook-symbol)
+  (monitor--test-with-uninterned-symbols (counter-a counter-b counter-c hook-symbol)
     (set counter-a 0)
     (set counter-b 0)
+    (set counter-c 0)
     (set hook-symbol nil)
 
     ;; the :expr and :pred options are required
     (monitor-test--should-error-missing-options (:expr :pred)
       (monitor-test--define-monitor :trigger-on [(monitor-test--dummy-listener :guard-trigger [(expression-value)])]))
 
-    (let* ((instance (eval `(monitor-test--define-monitor
-                              :trigger-on [(hook hook-symbol
-                                            :guard-trigger [(expression-value
-                                                             :expr ,counter-b
-                                                             :pred (lambda (old new) (> new old)))])]
-                              :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))
+    ;; we can specify the guard locally to a listener
+    (let* ((instance1 (eval `(monitor-test--define-monitor
+                               :trigger-on [(hook ,hook-symbol
+                                             :guard-trigger [(expression-value
+                                                              :expr ,counter-b
+                                                              :pred (lambda (old new) (> new old)))])]
+                               :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a))))))
+           ;; we can specify the guard globally to a monitor
+           (instance2 (eval `(monitor-test--define-monitor
+                               :trigger-on [(hook ,hook-symbol)]
+                               :guard-trigger [(expression-value
+                                                :expr ,counter-b
+                                                :pred (lambda (old new) (> new old)))]
+                               :on-trigger (lambda () (setq ,counter-c (1+ ,counter-c)))))))
 
-      (monitor-enable instance)
+      (monitor-enable instance1)
+      (monitor-enable instance2)
 
       ;; enabled
-      (should (eq t (monitor--enabled-p instance)))
+      (should (eq t (monitor--enabled-p instance1)))
+      (should (eq t (monitor--enabled-p instance2)))
 
       ;; value not yet checked
       (should (= 0 (symbol-value counter-a)))
+      (should (= 0 (symbol-value counter-c)))
 
       (run-hooks hook-symbol)
 
       ;; value checked, but same
       (should (= 0 (symbol-value counter-a)))
+      (should (= 0 (symbol-value counter-c)))
 
       (set counter-b (1+ (symbol-value counter-b)))
 
       ;; should trigger (value increased)
-      (monitor--trigger--trigger instance)
+      (run-hooks hook-symbol)
       (should (= 1 (symbol-value counter-a)))
+      (should (= 1 (symbol-value counter-c)))
 
-      (monitor-disable instance)
+      (monitor-disable instance1)
+      (monitor-disable instance2)
 
       ;; disabled
-      (should (eq nil (monitor--enabled-p instance))))))
+      (should (eq nil (monitor--enabled-p instance1)))
+      (should (eq nil (monitor--enabled-p instance2))))))
 
 
 (provide 'monitor-tests)
