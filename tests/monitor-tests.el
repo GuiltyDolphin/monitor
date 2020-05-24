@@ -142,7 +142,7 @@ This is a simple wrapper around `monitor-create'.
 
 
 (ert-deftest monitor-test:hook-monitor ()
-  "Tests for the 'hook monitor."
+  "Tests for the 'hook listener."
   (monitor--test-with-uninterned-symbols (hook-symbol counter-a)
     (set counter-a 0)
     (set hook-symbol nil)
@@ -185,7 +185,7 @@ This is a simple wrapper around `monitor-create'.
 
 
 (ert-deftest monitor-test:expression-value ()
-  "Tests for the 'expression-value monitor."
+  "Tests for the 'expression-value listener."
   (monitor--test-with-uninterned-symbols (counter-a counter-b)
     (set counter-a 0)
     (set counter-b 0)
