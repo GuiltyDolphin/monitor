@@ -166,6 +166,14 @@ The result is in the format (keyword-args special-args non-keyword-args)."
           :allocation :class))
   :documentation "Abstract class for specifications.")
 
+(defclass monitor--can-enable ()
+  ((enabled :initform nil
+            :type booleanp
+            :documentation "Non-NIL if the instance is currently enabled.
+
+Do not modify this value manually, instead use `monitor-enable' and `monitor-disable' on the parent monitor."))
+  :documentation "Abstract class for things that can be enabled/disabled.")
+
 (defclass monitor--can-trigger ()
   ((guard-trigger
     :initarg :guard-trigger
@@ -183,13 +191,8 @@ The result is in the format (keyword-args special-args non-keyword-args)."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defclass monitor--guard (monitor--spec)
-  ((enabled :initform nil
-            :type booleanp
-            :documentation "Non-NIL if the listener is currently enabled (allowed to listen).
-
-Do not modify this value manually, instead use `monitor-enable' and `monitor-disable' on the parent monitor.")
-   (owner :documentation "Object that this guard is guarding."))
+(defclass monitor--guard (monitor--can-enable monitor--spec)
+  ((owner :documentation "Object that this guard is guarding."))
   :abstract t
   :documentation "Base class for guards which can be used to refine when other components can trigger or activate.")
 
@@ -211,13 +214,8 @@ The function is passed the old and new values and arguments, and should return n
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defclass monitor--listener (monitor--can-trigger monitor--spec)
-  ((enabled :initform nil
-            :type booleanp
-            :documentation "Non-NIL if the listener is currently enabled (allowed to listen).
-
-Do not modify this value manually, instead use `monitor-enable' and `monitor-disable' on the parent monitor.")
-   (owner :type monitorp
+(defclass monitor--listener (monitor--can-enable monitor--can-trigger monitor--spec)
+  ((owner :type monitorp
           :documentation "The monitor associated with this listener. Do not modify this value manually."))
   :abstract t
   :documentation "Abstract base class for all listeners.")
@@ -234,13 +232,8 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defclass monitor--monitor (monitor--can-trigger)
-  ((enabled :initform nil
-            :type booleanp
-            :documentation "Non-NIL if the monitor is currently enabled (allowed to monitor).
-
-Do not modify this value manually, instead use `monitor-enable' and `monitor-disable'.")
-   (trigger-on :initarg :trigger-on
+(defclass monitor--monitor (monitor--can-enable monitor--can-trigger)
+  ((trigger-on :initarg :trigger-on
                :initform nil
                :documentation "Specification for listeners that should trigger the monitor.")
    (listeners :initform nil))
@@ -258,12 +251,12 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
 
 
 (cl-defgeneric monitor--enable (obj)
-  "Enable monitoring with OBJ.
+  "Enable OBJ.
 
 Note that you should only use this when implementing the method behaviour via `cl-defmethod', if you actually want to enable the monitor, use `monitor-enable' instead.")
 
 (cl-defgeneric monitor--disable (obj)
-  "Disable monitoring with OBJ.
+  "Disable OBJ.
 
 Note that you should only use this when implementing the method behaviour via `cl-defmethod', if you actually want to disable the monitor, use `monitor-disable' instead.")
 
@@ -276,6 +269,16 @@ Note that you should only use this when implementing the method behaviour via `c
   "Disable MONITOR."
   (let ((m (monitor--require-monitor-obj monitor)))
     (unless (monitor--disabled-p m) (monitor--disable m))))
+
+
+;;; can-enable (abstract)
+
+
+(cl-defmethod monitor--enable :after ((obj monitor--can-enable))
+  (oset obj enabled t))
+
+(cl-defmethod monitor--disable :after ((obj monitor--can-enable))
+  (oset obj enabled nil))
 
 
 ;;; can-trigger (abstract)
@@ -293,12 +296,6 @@ Note that you should only use this when implementing the method behaviour via `c
 ;;; Monitor (monitor)
 
 
-(cl-defmethod monitor--enable :after ((obj monitor--monitor))
-  (oset obj enabled t))
-
-(cl-defmethod monitor--disable :after ((obj monitor--monitor))
-  (oset obj enabled nil))
-
 (cl-defmethod monitor--enable ((obj monitor--monitor))
   (dolist (listener (oref obj listeners))
     (monitor--enable listener)))
@@ -313,13 +310,11 @@ Note that you should only use this when implementing the method behaviour via `c
 
 (cl-defmethod monitor--enable :after ((obj monitor--listener))
   (dolist (guard (oref obj guard-trigger))
-    (monitor--enable guard))
-  (oset obj enabled t))
+    (monitor--enable guard)))
 
 (cl-defmethod monitor--disable :after ((obj monitor--listener))
   (dolist (guard (oref obj guard-trigger))
-    (monitor--disable guard))
-  (oset obj enabled nil))
+    (monitor--disable guard)))
 
 
 ;;; Hook (listener)
@@ -334,16 +329,6 @@ Note that you should only use this when implementing the method behaviour via `c
 
 (cl-defmethod monitor--disable ((obj monitor--hook-listener))
   (remove-hook (oref obj hook) (monitor--hook-build-hook-fn obj)))
-
-
-;;; Guard (guard)
-
-
-(cl-defmethod monitor--enable :after ((obj monitor--guard))
-  (oset obj enabled t))
-
-(cl-defmethod monitor--disable :after ((obj monitor--guard))
-  (oset obj enabled nil))
 
 
 ;;; Expression-value (guard)

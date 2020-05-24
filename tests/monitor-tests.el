@@ -138,8 +138,9 @@ This is a simple wrapper around `monitor-create'.
 
 (ert-deftest monitor-test:hook-monitor ()
   "Tests for the 'hook listener."
-  (monitor--test-with-uninterned-symbols (hook-symbol counter-a)
+  (monitor--test-with-uninterned-symbols (hook-symbol counter-a counter-b)
     (set counter-a 0)
+    (set counter-b 0)
     (set hook-symbol nil)
 
     ;; the :hook option is required
@@ -152,33 +153,45 @@ This is a simple wrapper around `monitor-create'.
     ;; you can use the full name of the listener if you wish
     (eval `(monitor-test--define-monitor :trigger-on [(monitor--hook-listener ,hook-symbol)]))
 
-    (let* ((instance (eval `(monitor-test--define-monitor
+    ;; you can specify :on-trigger globally to the monitor
+    (let* ((instance1 (eval `(monitor-test--define-monitor
                               :trigger-on [(hook :hook ,hook-symbol)]
-                              :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))
+                              :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a))))))
+           ;; you can specify :on-trigger locally to a listener
+           (instance2 (eval `(monitor-test--define-monitor
+                              :trigger-on [(hook :hook ,hook-symbol
+                                                 :on-trigger (lambda () (setq ,counter-b (1+ ,counter-b))))]))))
       ;; disabled
-      (should (eq nil (monitor--enabled-p instance)))
+      (should (eq nil (monitor--enabled-p instance1)))
+      (should (eq nil (monitor--enabled-p instance2)))
       (should (eq nil (symbol-value hook-symbol)))
 
       (run-hooks hook-symbol)
       ;; counter should remain unchanged, as the monitor should not be
       ;; running anything from the hook
       (should (= 0 (symbol-value counter-a)))
-      (monitor-enable instance)
+      (should (= 0 (symbol-value counter-b)))
+      (monitor-enable instance1)
+      (monitor-enable instance2)
 
       ;; enabled
-      (should (eq t (monitor--enabled-p instance)))
-      (should (= 1 (length (symbol-value hook-symbol))))
+      (should (eq t (monitor--enabled-p instance1)))
+      (should (eq t (monitor--enabled-p instance2)))
+      (should (= 2 (length (symbol-value hook-symbol))))
 
       ;; instances trigger when hook runs
       (run-hooks hook-symbol)
       ;; counter should now be incremented, as the monitor was enabled
       ;; and should have tied into the hook
       (should (= 1 (symbol-value counter-a)))
+      (should (= 1 (symbol-value counter-b)))
 
-      (monitor-disable instance)
+      (monitor-disable instance1)
+      (monitor-disable instance2)
 
       ;; disabled
-      (should (eq nil (monitor--enabled-p instance)))
+      (should (eq nil (monitor--enabled-p instance1)))
+      (should (eq nil (monitor--enabled-p instance2)))
       (should (eq nil (symbol-value hook-symbol))))))
 
 
