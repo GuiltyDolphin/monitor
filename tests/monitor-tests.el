@@ -36,14 +36,11 @@
 
 (cl-defmethod monitor--enable ((_ monitor-test--enable-disable-monitor-child)))
 
-(defclass monitor-test--expression-value-listener (monitor--expression-value-listener)
-  (()))
+(defclass monitor-test--dummy-listener (monitor--listener)
+  (())
+  :documentation "Dummy listener which doesn't do anything special.")
 
-(cl-defmethod monitor--disable ((_ monitor-test--expression-value-listener)))
-
-(cl-defmethod monitor--enable ((_ monitor-test--expression-value-listener)))
-
-(monitor--register-listener 'monitor-test--expression-value-listener)
+(monitor--register-listener 'monitor-test--dummy-listener)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -185,20 +182,23 @@ This is a simple wrapper around `monitor-create'.
 
 
 (ert-deftest monitor-test:expression-value ()
-  "Tests for the 'expression-value listener."
-  (monitor--test-with-uninterned-symbols (counter-a counter-b)
+  "Tests for the 'expression-value guard."
+  (monitor--test-with-uninterned-symbols (counter-a counter-b hook-symbol)
     (set counter-a 0)
     (set counter-b 0)
+    (set hook-symbol nil)
 
     ;; the :expr and :pred options are required
     (monitor-test--should-error-missing-options (:expr :pred)
-      (monitor-test--define-monitor :trigger-on [(monitor-test--expression-value-listener)]))
+      (monitor-test--define-monitor :trigger-on [(monitor-test--dummy-listener :guard-trigger [(expression-value)])]))
 
     (let* ((instance (eval `(monitor-test--define-monitor
-                              :trigger-on [(monitor-test--expression-value-listener
-                                            :expr ,counter-b
-                                            :pred (lambda (old new) (> new old)))]
+                              :trigger-on [(hook hook-symbol
+                                            :guard-trigger [(expression-value
+                                                             :expr ,counter-b
+                                                             :pred (lambda (old new) (> new old)))])]
                               :on-trigger (lambda () (setq ,counter-a (1+ ,counter-a)))))))
+
       (monitor-enable instance)
 
       ;; enabled
@@ -207,7 +207,7 @@ This is a simple wrapper around `monitor-create'.
       ;; value not yet checked
       (should (= 0 (symbol-value counter-a)))
 
-      (monitor--trigger--trigger instance)
+      (run-hooks hook-symbol)
 
       ;; value checked, but same
       (should (= 0 (symbol-value counter-a)))
@@ -221,10 +221,7 @@ This is a simple wrapper around `monitor-create'.
       (monitor-disable instance)
 
       ;; disabled
-      (should (eq nil (monitor--enabled-p instance)))
-
-      ;; cannot trigger when disabled
-      (should-error (monitor--trigger--trigger instance)))))
+      (should (eq nil (monitor--enabled-p instance))))))
 
 
 (provide 'monitor-tests)

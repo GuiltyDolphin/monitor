@@ -75,6 +75,9 @@
 ;;;;;;;;;;;;;
 
 
+(defvar monitor--guard-classes nil
+  "Alist of registered guard symbols and their respective classes.")
+
 (defvar monitor--listener-classes nil
   "Alist of registered listener symbols and their respective classes.")
 
@@ -155,21 +158,35 @@ The result is in the format (keyword-args special-args non-keyword-args)."
   "T if MONITOR is disabled."
   (not (monitor--enabled-p monitor)))
 
-(defun monitor--parse-listeners (listener-spec monitor)
-  "Parse LISTENER-SPEC into appropriate listeners for the given MONITOR."
+(defun monitor--parse-specs (spec-class specs owner)
+  "Parse SPECS as specifications for SPEC-CLASS with given OWNER."
   (mapcar
    (lambda (spec)
-     (let* ((lclass (monitor--get-listener-class-for-alias (car spec)))
+     (let* ((sclass (monitor--get-class-for-alias spec-class (car spec)))
             (args (cdr spec))
-            (listener (apply lclass (monitor--parse-spec lclass args))))
-       (oset listener monitor monitor)
-       (monitor--setup listener)
-       listener)) listener-spec))
+            (instance (apply sclass (monitor--parse-spec sclass args))))
+       (oset instance owner owner)
+       (monitor--setup instance)
+       instance)) specs))
 
-(defun monitor--get-listener-class-for-alias (alias)
-  "Retrieve the listener class associated with the symbol ALIAS."
+(cl-defgeneric monitor--get-class-for-alias (class alias)
+  "Retrieve the class associated with the symbol ALIAS, for a given CLASS.")
+
+(cl-defmethod monitor--get-class-for-alias ((_ (subclass monitor--listener)) alias)
   (or (alist-get alias monitor--listener-classes)
       (error "%s is not known to be a listener" alias)))
+
+(cl-defmethod monitor--get-class-for-alias ((_ (subclass monitor--guard)) alias)
+  (or (alist-get alias monitor--guard-classes)
+      (error "%s is not known to be a guard" alias)))
+
+(defun monitor--parse-listeners (listener-spec owner)
+  "Parse LISTENER-SPEC into appropriate listeners for the given OWNER."
+  (monitor--parse-specs 'monitor--listener listener-spec owner))
+
+(defun monitor--parse-guards (guard-spec owner)
+  "Parse GUARD-SPEC into appropriate guards for the given OWNER."
+  (monitor--parse-specs 'monitor--guard guard-spec owner))
 
 (defun monitor--register-listener (class &optional alias)
   "Register CLASS as a listener with optional alias ALIAS.
@@ -179,6 +196,42 @@ You need to do this if you want to use CLASS in `define-monitor' listener specif
     (error "%s does not inherit from 'monitor--listener" class))
   (let ((alias (or alias (eieio-class-name class))))
     (add-to-list 'monitor--listener-classes (cons alias class))))
+
+(defun monitor--register-guard (class &optional alias)
+  "Register CLASS as a guard with optional alias ALIAS.
+
+You need to do this if you want to use CLASS in `define-monitor' guard specifications."
+  (unless (child-of-class-p class 'monitor--guard)
+    (error "%s does not inherit from 'monitor--guard" class))
+  (let ((alias (or alias (eieio-class-name class))))
+    (add-to-list 'monitor--guard-classes (cons alias class))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Classes - Guards ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defclass monitor--guard ()
+  ((enabled :initform nil
+            :type booleanp
+            :documentation "Non-NIL if the listener is currently enabled (allowed to listen).
+
+Do not modify this value manually, instead use `monitor-enable' and `monitor-disable' on the parent monitor.")
+   (owner :documentation "Object that this guard is guarding."))
+  :abstract t
+  :documentation "Base class for guards which can be used to refine when other components can trigger or activate.")
+
+(defclass monitor--expression-value-guard (monitor--guard)
+  ((expr :initarg :expr
+         :documentation "Expression to monitor. It's probably best to keep this free of side-effects.")
+   (pred :initarg :pred
+         :type functionp
+         :documentation "Function used to compare the previous and current vaue of the expression.
+
+The function is passed the old and new values and arguments, and should return non-NIL if the monitor should trigger.")
+   (value :documentation "Last known value of `:expr' (don't set this manually)."))
+  :documentation "Guard which allows triggering only if an expression has reached a desired state.")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -192,8 +245,17 @@ You need to do this if you want to use CLASS in `define-monitor' listener specif
             :documentation "Non-NIL if the listener is currently enabled (allowed to listen).
 
 Do not modify this value manually, instead use `monitor-enable' and `monitor-disable' on the parent monitor.")
-   (monitor :type monitorp
-            :documentation "The monitor associated with this listener. Do not modify this value manually."))
+   (guard-trigger
+    :initarg :guard-trigger
+    :initform nil
+    :documentation "Specification used to guard triggering.")
+   (trigger-pred
+    :initarg :trigger-pred
+    :type functionp
+    :initform (-const t)
+    :documentation "Predicate that determines whether the monitor should trigger. It is passed the current monitor object, and may perform side-effects.")
+   (owner :type monitorp
+          :documentation "The monitor associated with this listener. Do not modify this value manually."))
   :abstract t
   :documentation "Abstract base class for all listeners.")
 
@@ -201,18 +263,6 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
   ((hook :initarg :hook
          :documentation "Hook variable to target."))
   :documentation "Listener for triggering on hooks.")
-
-(defclass monitor--expression-value-listener (monitor--listener)
-  ((expr :initarg :expr
-         :documentation "Expression to monitor. It's probably best to keep this free of side-effects.")
-   (pred :initarg :pred
-         :type functionp
-         :documentation "Function used to compare the previous and current vaue of the expression.
-
-The function is passed the old and new values and arguments, and should return non-NIL if the monitor should trigger.")
-   (value :documentation "Last known value of `:expr' (don't set this manually)."))
-  :abstract t
-  :documentation "Abstract class for listeners which should only trigger if an expression has reached a desired state since the last tick.")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -295,33 +345,47 @@ Note that you should only use this when implementing the method behaviour via `c
 
 
 (cl-defmethod monitor--enable :after ((obj monitor--listener))
+  (dolist (guard (oref obj guard-trigger))
+    (monitor--enable guard))
   (oset obj enabled t))
 
 (cl-defmethod monitor--disable :after ((obj monitor--listener))
+  (dolist (guard (oref obj guard-trigger))
+    (monitor--disable guard))
   (oset obj enabled nil))
 
 
 ;;; Hook (listener)
 
 
-(defun monitor--hook-build-hook-fn (monitor)
-  "Build a form suitable for adding to a hook for the MONITOR."
-  (lambda () (monitor--trigger--trigger monitor)))
+(defun monitor--hook-build-hook-fn (obj)
+  "Build a form suitable for adding to a hook for the OBJ."
+  (lambda () (monitor--trigger--trigger obj)))
 
 (cl-defmethod monitor--enable ((obj monitor--hook-listener))
-  (add-hook (oref obj hook) (monitor--hook-build-hook-fn (oref obj monitor))))
+  (add-hook (oref obj hook) (monitor--hook-build-hook-fn obj)))
 
 (cl-defmethod monitor--disable ((obj monitor--hook-listener))
-  (remove-hook (oref obj hook) (monitor--hook-build-hook-fn (oref obj monitor))))
+  (remove-hook (oref obj hook) (monitor--hook-build-hook-fn obj)))
 
 
-;;; Expression-value (listener)
+;;; Guard (guard)
 
 
-(cl-defmethod monitor--enable :before ((obj monitor--expression-value-listener))
+(cl-defmethod monitor--enable :after ((obj monitor--guard))
+  (oset obj enabled t))
+
+(cl-defmethod monitor--disable :after ((obj monitor--guard))
+  (oset obj enabled nil))
+
+
+;;; Expression-value (guard)
+
+
+(cl-defmethod monitor--enable ((obj monitor--expression-value-guard))
   (oset obj value (eval (oref obj expr))))
 
-(cl-defmethod monitor--disable :before ((obj monitor--expression-value-listener))
+(cl-defmethod monitor--disable ((obj monitor--expression-value-guard))
   (slot-makeunbound obj 'value))
 
 
@@ -364,33 +428,43 @@ the body.")
 ;;; Listener (listener)
 
 
-(cl-defmethod monitor--setup ((_ monitor--listener))
-  "No additional setup required for base listener.")
+(cl-defmethod monitor--setup :after ((obj monitor--listener))
+  (let ((guard-trigger (monitor--parse-guards (oref obj guard-trigger) obj)))
+    (oset obj guard-trigger guard-trigger)))
+
+(cl-defmethod monitor--setup ((_ monitor--listener)))
 
 
 ;;; Hook (listener)
 
 
-(cl-defmethod monitor--setup :after ((obj monitor--hook-listener))
+(cl-defmethod monitor--setup :before ((obj monitor--hook-listener))
   "We require the :hook argument to be bound."
   (monitor--validate-required-options obj '(:hook)))
 
 
-;;; Expression-value (listener)
+;;; Guard (guard)
 
 
-(cl-defmethod monitor--setup ((obj monitor--expression-value-listener))
+(cl-defmethod monitor--setup ((_ monitor--guard))
+  "No additional setup required for base guard.")
+
+
+;;; Expression-value (guard)
+
+
+(cl-defmethod monitor--setup ((obj monitor--expression-value-guard))
   "We require the `:expr' and `:pred' arguments to be bound."
   (monitor--validate-required-options obj '(:expr :pred))
-  (let* ((monitor (oref obj monitor))
-         (pred-old (oref monitor trigger-pred))
+  (let* ((owner (oref obj owner))
+         (pred-old (oref owner trigger-pred))
          (pred-new (lambda ()
                      (let* ((expr (oref obj expr))
                             (old (oref obj value))
                             (new (eval expr)))
                        (when (funcall (oref obj pred) old new) (oset obj value new) t)))))
     ;; we wrap up the old predicate with a new predicate that tracks the expression value
-    (oset monitor trigger-pred (lambda () (and (funcall pred-old) (funcall pred-new)))))
+    (oset owner trigger-pred (lambda () (and (funcall pred-old) (funcall pred-new)))))
   (cl-call-next-method))
 
 
@@ -423,6 +497,13 @@ the body.")
     (-concat keys args)))
 
 
+;;; Guard (guard)
+
+
+(cl-defmethod monitor--parse-spec ((_ (subclass monitor--guard)) args)
+  args)
+
+
 ;;;;;;;;;;;;;;;;
 ;; Triggering ;;
 ;;;;;;;;;;;;;;;;
@@ -432,10 +513,21 @@ the body.")
   "This method determines how to handle triggering a monitor, i.e., the moment the monitor becomes instantaneously active.")
 
 
+;;; Listener (listener)
+
+
+(cl-defmethod monitor--trigger--trigger ((obj monitor--listener) &optional args)
+  "Run the `:on-trigger' function of the owner of OBJ with ARGS as arguments.
+
+Only triggers if the predicate in `:trigger-pred' returns non-NIL."
+  (when (funcall (oref obj trigger-pred))
+    (monitor--trigger--trigger (oref obj owner) args)))
+
+
 ;;; Monitor (monitor)
 
 
-(cl-defmethod monitor--trigger--trigger ((obj monitor--monitor) &rest args)
+(cl-defmethod monitor--trigger--trigger ((obj monitor--monitor) &optional args)
   "Run the `:trigger' function of OBJ with ARGS as arguments.
 
 The monitor will only trigger if the predicate in `:trigger-pred' returns non-NIL."
@@ -472,7 +564,7 @@ defaults to `monitor--monitor'."
 
 
 (monitor--register-listener 'monitor--hook-listener 'hook)
-(monitor--register-listener 'monitor--expression-value-listener 'expression-value)
+(monitor--register-guard 'monitor--expression-value-guard 'expression-value)
 
 
 (provide 'monitor)
