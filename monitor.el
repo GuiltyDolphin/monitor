@@ -70,18 +70,6 @@
   :prefix 'monitor-)
 
 
-;;;;;;;;;;;;;
-;; Globals ;;
-;;;;;;;;;;;;;
-
-
-(defvar monitor--guard-classes nil
-  "Alist of registered guard symbols and their respective classes.")
-
-(defvar monitor--listener-classes nil
-  "Alist of registered listener symbols and their respective classes.")
-
-
 ;;;;;;;;;;;;;;;;;;;
 ;;;;; Helpers ;;;;;
 ;;;;;;;;;;;;;;;;;;;
@@ -142,7 +130,9 @@ The result is in the format (keyword-args special-args non-keyword-args)."
   "Parse SPECS as specifications for SPEC-CLASS with given OWNER."
   (mapcar
    (lambda (spec)
-     (let* ((sclass (monitor--get-class-for-alias spec-class (car spec)))
+     (let* ((sclass (or
+                     (monitor--get-class-for-alias spec-class (car spec))
+                     (error "%s is not known to be a %s" (car spec) spec-class)))
             (args (cdr spec))
             (instance (apply sclass (monitor--parse-spec sclass args))))
        (oset instance owner owner)
@@ -152,13 +142,10 @@ The result is in the format (keyword-args special-args non-keyword-args)."
 (cl-defgeneric monitor--get-class-for-alias (class alias)
   "Retrieve the class associated with the symbol ALIAS, for a given CLASS.")
 
-(cl-defmethod monitor--get-class-for-alias ((_ (subclass monitor--listener)) alias)
-  (or (alist-get alias monitor--listener-classes)
-      (error "%s is not known to be a listener" alias)))
-
-(cl-defmethod monitor--get-class-for-alias ((_ (subclass monitor--guard)) alias)
-  (or (alist-get alias monitor--guard-classes)
-      (error "%s is not known to be a guard" alias)))
+(cl-defmethod monitor--get-class-for-alias ((class (subclass monitor--spec)) alias)
+  (or (and (slot-boundp class 'alias) (eq (oref-default class alias) alias) class)
+      (and (eq alias (eieio-class-name class)) class)
+      (-any (lambda (c) (monitor--get-class-for-alias c alias)) (eieio-class-children class))))
 
 (defun monitor--parse-listeners (listener-spec owner)
   "Parse LISTENER-SPEC into appropriate listeners for the given OWNER."
@@ -168,29 +155,16 @@ The result is in the format (keyword-args special-args non-keyword-args)."
   "Parse GUARD-SPEC into appropriate guards for the given OWNER."
   (monitor--parse-specs 'monitor--guard guard-spec owner))
 
-(defun monitor--register-listener (class &optional alias)
-  "Register CLASS as a listener with optional alias ALIAS.
-
-You need to do this if you want to use CLASS in `define-monitor' listener specifications."
-  (unless (child-of-class-p class 'monitor--listener)
-    (error "%s does not inherit from 'monitor--listener" class))
-  (let ((alias (or alias (eieio-class-name class))))
-    (add-to-list 'monitor--listener-classes (cons alias class))))
-
-(defun monitor--register-guard (class &optional alias)
-  "Register CLASS as a guard with optional alias ALIAS.
-
-You need to do this if you want to use CLASS in `define-monitor' guard specifications."
-  (unless (child-of-class-p class 'monitor--guard)
-    (error "%s does not inherit from 'monitor--guard" class))
-  (let ((alias (or alias (eieio-class-name class))))
-    (add-to-list 'monitor--guard-classes (cons alias class))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Classes - Interfaces ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defclass monitor--spec ()
+  ((alias :documentation "Optional alias for the spec."
+          :allocation :class))
+  :documentation "Abstract class for specifications.")
 
 (defclass monitor--can-trigger ()
   ((guard-trigger
@@ -209,7 +183,7 @@ You need to do this if you want to use CLASS in `define-monitor' guard specifica
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defclass monitor--guard ()
+(defclass monitor--guard (monitor--spec)
   ((enabled :initform nil
             :type booleanp
             :documentation "Non-NIL if the listener is currently enabled (allowed to listen).
@@ -227,7 +201,8 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
          :documentation "Function used to compare the previous and current vaue of the expression.
 
 The function is passed the old and new values and arguments, and should return non-NIL if the monitor should trigger.")
-   (value :documentation "Last known value of `:expr' (don't set this manually)."))
+   (value :documentation "Last known value of `:expr' (don't set this manually).")
+   (alias :initform 'expression-value))
   :documentation "Guard which allows triggering only if an expression has reached a desired state.")
 
 
@@ -236,7 +211,7 @@ The function is passed the old and new values and arguments, and should return n
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defclass monitor--listener (monitor--can-trigger)
+(defclass monitor--listener (monitor--can-trigger monitor--spec)
   ((enabled :initform nil
             :type booleanp
             :documentation "Non-NIL if the listener is currently enabled (allowed to listen).
@@ -249,7 +224,8 @@ Do not modify this value manually, instead use `monitor-enable' and `monitor-dis
 
 (defclass monitor--hook-listener (monitor--listener)
   ((hook :initarg :hook
-         :documentation "Hook variable to target."))
+         :documentation "Hook variable to target.")
+   (alias :initform 'hook))
   :documentation "Listener for triggering on hooks.")
 
 
@@ -587,15 +563,6 @@ defaults to `monitor--monitor'."
     (let ((obj (monitor--funcall class slots)))
       (monitor--setup obj)
       obj)))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Default setup ;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(monitor--register-listener 'monitor--hook-listener 'hook)
-(monitor--register-guard 'monitor--expression-value-guard 'expression-value)
 
 
 (provide 'monitor)

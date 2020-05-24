@@ -40,8 +40,6 @@
   (())
   :documentation "Dummy listener which doesn't do anything special.")
 
-(monitor--register-listener 'monitor-test--dummy-listener)
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Test helpers ;;;;;
@@ -150,6 +148,9 @@ This is a simple wrapper around `monitor-create'.
 
     ;; first argument is taken to be the hook (this should not error)
     (eval `(monitor-test--define-monitor :trigger-on [(hook ,hook-symbol)]))
+
+    ;; you can use the full name of the listener if you wish
+    (eval `(monitor-test--define-monitor :trigger-on [(monitor--hook-listener ,hook-symbol)]))
 
     (let* ((instance (eval `(monitor-test--define-monitor
                               :trigger-on [(hook :hook ,hook-symbol)]
