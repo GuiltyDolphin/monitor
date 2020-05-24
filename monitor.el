@@ -95,20 +95,12 @@ Thus (monitor--funcall #'fn 'a '(b c)) is the same as (funcall #'fn 'a 'b 'c).
 Returns the value FN returns."
   (funcall (-applify fn) (-concat (-drop-last 1 args) (car (-take-last 1 args)))))
 
-(defconst monitor--instance-prop
-  :monitor--instance
-  "Property name under which instance information is stored.
-
-Please don't modify this value manually.")
-
 (defun monitor--require-monitor-obj (obj)
-  "Get the monitor associated with OBJ, which must be something that satisfies `monitorp'.
+  "Get the monitor associated with OBJ.
 
-This fails if `obj' does not satisfy `monitorp'."
+This fails if OBJ does not satisfy `monitorp'."
   (cl-check-type obj monitorp)
-  (if (symbolp obj)
-      (monitor--symbol-monitor-object obj)
-    obj))
+  obj)
 
 (defun monitor--parse-keyword-value-args (args &optional special-keys)
   "Parse ARGS as a series of keyword value pairs.
@@ -134,21 +126,9 @@ The result is in the format (keyword-args special-args non-keyword-args)."
                (class (plist-get specials :class)))
     (list (if (eq (car-safe class) 'quote) (cadr class) class) keys args)))
 
-(defun monitor--remove-monitor (monitor)
-  "Remove MONITOR's definition as a monitor."
-  (monitor-disable monitor)
-  (put monitor monitor--instance-prop nil))
-
-(defun monitor--symbol-monitor-object (symbol)
-  "Get the monitor object associated with the symbol SYMBOL."
-  (get symbol monitor--instance-prop))
-
 (defun monitorp (monitor)
   "Return non-NIL if MONITOR is a monitor."
-  (or (and (monitor--monitor--eieio-childp monitor) t)
-      (and (symbolp monitor)
-           (monitor--monitor--eieio-childp (monitor--symbol-monitor-object monitor))
-           t)))
+  (monitor--monitor--eieio-childp monitor))
 
 (defun monitor--enabled-p (monitor)
   "T if MONITOR is enabled."
