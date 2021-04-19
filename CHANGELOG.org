@@ -12,8 +12,6 @@ information on how to use monitor.
 ** Added
 
 - new custom error =monitor--missing-required-option=
-- new dependencies
-  - =dash-functional= (=1.2.0=)
 - new development files
   - =Cask=
   - =Makefile=
@@ -32,7 +30,6 @@ information on how to use monitor.
 
 ** Removed
 
-- dependency on =dash-functional= (subsumed into =dash=)
 - functions and macros
   - =define-monitor=
   - =monitor=
