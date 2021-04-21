@@ -349,7 +349,7 @@ Note that you should only use this when implementing the method behaviour via `c
   "Initialize OBJ.
 
 This method is called when an instance is created with
-`monitor-define-monitor', so it's a good place to put any
+`monitor-create', so it's a good place to put any
 validation (e.g., checking for missing options) and
 initialization you want to apply to all new instances.
 
